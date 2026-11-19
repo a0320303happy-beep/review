@@ -1,0 +1,982 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>設計提案評分｜A案・B案</title>
+<script src="config.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Courier+Prime&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+  :root{
+    color-scheme: light;
+    --bg:#E8E8E6;
+    --bar:#EAEAE8;
+    --line:#CFCFCC;
+    --panel:#F4F4F2;
+    --panel-line:#D6D6D3;
+    --ink:#161616;
+    --ink-2:#3A3A3A;
+    --mute:#7A7A76;
+    --soft:#D3D3D0;
+    --orange:#E2864F;
+    --orange-ink:#B85E2B;
+    --white:#FFFFFF;
+    --mono:"Courier Prime","Courier New",ui-monospace,monospace,"Noto Sans TC";
+    --sans:"Noto Sans TC",system-ui,-apple-system,"PingFang TC","Microsoft JhengHei",sans-serif;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);-webkit-font-smoothing:antialiased}
+  button,input,textarea{font:inherit;color:inherit}
+  .mono{font-family:var(--mono);letter-spacing:.14em}
+  [hidden]{display:none !important}
+
+  /* ---------- top bar ---------- */
+  .topbar{position:sticky;top:0;z-index:20;background:var(--bar);border-bottom:1px solid var(--line);
+    display:grid;grid-template-columns:1fr auto auto;align-items:center;gap:24px;padding:14px clamp(16px,4vw,64px)}
+  .crumb{display:flex;align-items:center;gap:14px;font-size:15px;letter-spacing:.12em;white-space:nowrap;overflow:hidden}
+  .crumb b{font-weight:500}
+  .crumb .slash{font-size:18px;color:var(--ink)}
+  .crumb .mono{font-size:14px}
+  nav.tabs{display:flex;gap:6px}
+  nav.tabs button{background:none;border:0;padding:9px 16px;cursor:pointer;font-family:var(--mono);letter-spacing:.14em;
+    font-size:14px;color:var(--mute);white-space:nowrap}
+  nav.tabs button span{font-family:var(--sans);letter-spacing:.12em;margin-left:8px}
+  nav.tabs button:hover{color:var(--ink)}
+  nav.tabs button.active{background:var(--orange);color:var(--ink)}
+  .counter{font-size:14px;color:var(--mute);white-space:nowrap}
+  @media (max-width:760px){
+    .topbar{grid-template-columns:1fr auto;gap:10px 12px;padding:12px 16px}
+    nav.tabs{grid-column:1 / -1;grid-row:2;overflow-x:auto;margin:0 -4px}
+    nav.tabs button{padding:8px 12px;font-size:13px}
+    .crumb{font-size:13px;gap:8px}
+    .crumb .mono{font-size:12px}
+  }
+
+  main{padding:0 clamp(16px,4vw,64px) 80px;max-width:1500px;margin:0 auto}
+
+  /* ---------- hero ---------- */
+  .hero{padding:clamp(28px,5vw,64px) 0 clamp(20px,3vw,40px)}
+  .eyebrow{display:flex;align-items:center;gap:14px;font-family:var(--mono);letter-spacing:.14em;color:var(--mute);font-size:15px}
+  .eyebrow::before{content:"";width:11px;height:11px;background:var(--ink);display:inline-block}
+  h1{font-weight:900;font-size:clamp(34px,6vw,76px);line-height:1.08;margin:14px 0 14px;letter-spacing:.02em}
+  .lead{margin:0;color:var(--ink-2);font-size:clamp(15px,1.6vw,18px);line-height:1.7;max-width:46em}
+
+  /* ---------- notices ---------- */
+  .notice{border-left:6px solid var(--orange);background:var(--panel);padding:14px 18px;margin:0 0 24px;line-height:1.7;font-size:15px}
+  .notice b{font-weight:700}
+
+  /* ---------- respondent info ---------- */
+  .info{background:var(--panel);border:1px solid var(--panel-line);padding:clamp(18px,3vw,36px) clamp(18px,3vw,44px);margin-bottom:clamp(16px,2.5vw,40px)}
+  .info-head{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:14px}
+  .info-head h2{margin:0;font-weight:900;font-size:clamp(22px,2.4vw,30px);letter-spacing:.06em}
+  .info-head .mono{font-size:13px;color:var(--mute)}
+  .info-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 clamp(16px,3vw,48px)}
+  @media (max-width:760px){.info-fields{grid-template-columns:1fr}}
+  .field{display:grid;grid-template-columns:96px minmax(0,1fr);align-items:center;gap:14px;padding:14px 0;border-top:1px solid var(--panel-line)}
+  .field b{font-weight:900;font-size:clamp(18px,1.8vw,22px);letter-spacing:.08em}
+  .field input{width:100%;border:1px solid var(--panel-line);background:var(--white);padding:12px 14px;font-size:16px}
+  .field input:focus{outline:2px solid var(--orange);outline-offset:-2px}
+  .field.missing input{border-color:var(--orange);box-shadow:inset 4px 0 0 var(--orange)}
+
+  /* ---------- lock ---------- */
+  .lock{max-width:560px;margin:0 auto}
+  .lock form{display:flex;gap:10px;margin-top:6px}
+  .lock input{flex:1;min-width:0;border:1px solid #3A3A3A;background:#222;color:var(--white);padding:14px 16px;font-size:20px;letter-spacing:.4em;font-family:var(--mono)}
+  .lock input:focus{outline:2px solid var(--orange);outline-offset:-2px}
+  .lock .err{color:#FF9C6B;font-size:14px;min-height:1.6em;margin-top:10px}
+
+  /* ---------- proposal cards ---------- */
+  .proposals{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:clamp(16px,2.5vw,40px)}
+  @media (max-width:900px){.proposals{grid-template-columns:1fr}}
+  .card{background:var(--panel);border:1px solid var(--panel-line);padding:clamp(18px,3vw,44px);scroll-margin-top:120px}
+  .card-head{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;margin-bottom:22px}
+  .card-head h2{margin:0;font-weight:900;font-size:clamp(28px,3.4vw,44px);letter-spacing:.04em;display:flex;align-items:center;gap:14px}
+  .card-head h2 .chip{display:inline-block;width:18px;height:18px;background:var(--orange)}
+  .card[data-p="B"] .card-head h2 .chip{background:var(--ink)}
+  .card-head .mono{color:var(--mute);font-size:14px}
+
+  .img-slot{position:relative;background:var(--white);border:1px solid var(--panel-line);aspect-ratio:4 / 3;display:flex;
+    align-items:center;justify-content:center;overflow:hidden}
+  .img-slot img{width:100%;height:100%;object-fit:contain;display:block;cursor:zoom-in;background:var(--white)}
+  .placeholder{position:absolute;inset:0;padding:8%;display:grid;grid-template-rows:auto 1fr auto;gap:6%}
+  .placeholder .ph-bar{height:14px;width:34%;background:var(--ink)}
+  .placeholder .ph-block{background:#DCDCD8}
+  .placeholder .ph-lines{display:grid;gap:10px}
+  .placeholder .ph-lines i{display:block;height:9px;background:#DCDCD8}
+  .placeholder .ph-lines i:last-child{width:60%}
+  .placeholder .ph-label{position:absolute;inset:0;display:flex;align-items:center;justify-content:center}
+  .placeholder .ph-label span{background:var(--ink);color:var(--white);padding:10px 16px;font-size:14px;font-family:var(--mono);letter-spacing:.12em}
+  .slot-tools{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+  .btn{border:1px solid var(--ink);background:var(--ink);color:var(--white);padding:10px 18px;cursor:pointer;font-size:14px;letter-spacing:.1em}
+  .btn:hover{background:var(--ink-2)}
+  .btn.ghost{background:transparent;color:var(--ink)}
+  .btn.ghost:hover{background:var(--white)}
+  .btn.orange{background:var(--orange);border-color:var(--orange);color:var(--ink)}
+  .btn.orange:hover{filter:brightness(1.05)}
+  .btn:disabled{opacity:.45;cursor:not-allowed}
+  .btn.sm{padding:6px 12px;font-size:13px}
+  .slot-msg{font-size:13px;color:var(--mute);align-self:center}
+
+  .criteria{margin-top:28px;border-top:1px solid var(--panel-line)}
+  .crit{display:grid;grid-template-columns:132px minmax(0,1fr);gap:6px 20px;align-items:center;padding:20px 0;border-bottom:1px solid var(--panel-line)}
+  .crit-name{font-weight:900;font-size:clamp(20px,2vw,26px);letter-spacing:.06em}
+  .crit-name small{display:block;font-family:var(--mono);font-weight:400;font-size:11px;color:var(--mute);letter-spacing:.06em;margin-top:2px}
+  @media (max-width:480px){.crit{grid-template-columns:96px minmax(0,1fr);gap:6px 14px}}
+  .crit-ctl{display:grid;gap:6px}
+  .crit-read{display:flex;align-items:baseline;gap:10px;min-height:30px}
+  .crit-read .num{font-weight:900;font-size:26px;color:var(--orange);min-width:.8em;line-height:1}
+  .crit-read .txt{font-size:15px;font-weight:700;letter-spacing:.08em}
+  .crit.untouched .crit-read .num{color:var(--soft)}
+  .crit.untouched .crit-read .txt{color:var(--mute);font-weight:400}
+  .crit.missing{box-shadow:inset 4px 0 0 var(--orange);padding-left:12px}
+  .crit.missing .crit-read .txt{color:var(--orange-ink);font-weight:700}
+
+  input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:32px;background:transparent;margin:0;cursor:pointer;--fill:50%}
+  input[type=range]:focus{outline:none}
+  input[type=range]::-webkit-slider-runnable-track{height:6px;background:linear-gradient(to right,var(--orange) 0 var(--fill),var(--soft) var(--fill) 100%)}
+  input[type=range]::-moz-range-track{height:6px;background:linear-gradient(to right,var(--orange) 0 var(--fill),var(--soft) var(--fill) 100%)}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:24px;height:24px;margin-top:-9px;background:var(--ink);border:3px solid var(--panel);box-shadow:0 0 0 1px var(--ink)}
+  input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:0;background:var(--ink);border:3px solid var(--panel);box-shadow:0 0 0 1px var(--ink)}
+  input[type=range]:focus-visible::-webkit-slider-thumb{box-shadow:0 0 0 3px var(--orange)}
+  input[type=range]:focus-visible::-moz-range-thumb{box-shadow:0 0 0 3px var(--orange)}
+  .crit.untouched input[type=range]::-webkit-slider-runnable-track{background:var(--soft)}
+  .crit.untouched input[type=range]::-moz-range-track{background:var(--soft)}
+  .crit.untouched input[type=range]::-webkit-slider-thumb{background:#9A9A96;box-shadow:0 0 0 1px #9A9A96}
+  .crit.untouched input[type=range]::-moz-range-thumb{background:#9A9A96;box-shadow:0 0 0 1px #9A9A96}
+  .ticks{display:flex;justify-content:space-between;padding:0 7px;font-size:12px;color:var(--mute)}
+  .ticks span{width:10px;text-align:center}
+
+  .sugg{display:block;margin-top:24px}
+  .sugg-label{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px}
+  .sugg-label b{font-weight:900;font-size:clamp(20px,2vw,26px);letter-spacing:.06em}
+  .sugg-label .mono{font-size:12px;color:var(--mute)}
+  textarea{width:100%;min-height:110px;resize:vertical;border:1px solid var(--panel-line);background:var(--white);padding:14px 16px;font-size:16px;line-height:1.7}
+  textarea:focus{outline:2px solid var(--orange);outline-offset:-2px}
+
+  /* ---------- dark submit panel ---------- */
+  .dark{background:var(--ink);color:var(--white);padding:clamp(22px,3.5vw,56px);margin-top:clamp(16px,2.5vw,40px)}
+  .dark h3{margin:0;font-weight:900;font-size:clamp(26px,3.4vw,44px);letter-spacing:.04em}
+  .dark .rule{height:1px;background:#3A3A3A;margin:22px 0 26px}
+  .dark .mono{color:#A9A9A5}
+  .submit-row{display:flex;flex-wrap:wrap;gap:18px 28px;align-items:center;justify-content:space-between}
+  .swatches{display:flex;gap:10px;align-items:center}
+  .swatches i{width:44px;height:44px;display:block;border:1px solid #3A3A3A}
+  .status{font-size:15px;line-height:1.7;min-height:1.7em}
+  .status.ok{color:var(--orange)}
+  .status.err{color:#FF9C6B}
+  .dark .btn.orange{font-size:17px;padding:16px 34px;font-weight:700}
+  .done-mark{display:inline-block;width:12px;height:12px;background:var(--orange);margin-right:10px;vertical-align:middle}
+
+  /* ---------- admin ---------- */
+  .stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:clamp(12px,2vw,24px);margin-bottom:clamp(16px,2.5vw,40px)}
+  @media (max-width:700px){.stats{grid-template-columns:1fr}}
+  .stat{background:var(--panel);border:1px solid var(--panel-line);padding:22px 24px}
+  .stat .mono{font-size:13px;color:var(--mute)}
+  .stat .big{font-weight:900;font-size:clamp(36px,4vw,56px);line-height:1.1;margin-top:8px}
+  .stat .big small{font-size:.4em;font-weight:500;color:var(--mute);margin-left:6px}
+  .live{display:inline-flex;align-items:center;gap:8px}
+  .live::before{content:"";width:8px;height:8px;background:var(--orange);display:inline-block}
+
+  .compare{display:grid;gap:26px}
+  .cmp-row{display:grid;grid-template-columns:120px 1fr;gap:10px 24px;align-items:center}
+  @media (max-width:600px){.cmp-row{grid-template-columns:1fr}}
+  .cmp-name{font-weight:900;font-size:22px;letter-spacing:.06em}
+  .bars{display:grid;gap:8px}
+  .bar{display:grid;grid-template-columns:48px 1fr 54px;align-items:center;gap:12px;font-size:14px}
+  .bar .who{font-weight:700}
+  .bar .track{height:22px;background:#2A2A2A;position:relative}
+  .bar .fill{position:absolute;inset:0 auto 0 0;background:var(--orange);transition:width .4s ease}
+  .bar.b .fill{background:#E6E6E4}
+  .bar .val{font-family:var(--mono);letter-spacing:.06em;text-align:right;font-size:16px}
+  .scale{display:grid;grid-template-columns:120px 48px 1fr 54px;gap:0 12px;font-size:11px;color:#8A8A86}
+  .scale > div{display:flex;justify-content:space-between}
+  @media (max-width:600px){.scale{grid-template-columns:48px 1fr 54px}.scale .sp1{display:none}}
+  .dist{font-family:var(--mono);font-size:12px;color:#8A8A86;letter-spacing:.06em;padding-left:60px;margin-top:-2px}
+
+  .section-title{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;margin:clamp(28px,4vw,56px) 0 16px}
+  .section-title h3{margin:0;font-weight:900;font-size:clamp(24px,2.8vw,36px);letter-spacing:.04em}
+  .section-title .mono{font-size:13px;color:var(--mute)}
+  .two{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:clamp(12px,2vw,24px)}
+  @media (max-width:900px){.two{grid-template-columns:1fr}}
+  .notes{background:var(--panel);border:1px solid var(--panel-line);padding:22px 24px}
+  .notes h4{margin:0 0 6px;font-size:20px;font-weight:900;display:flex;align-items:center;gap:10px}
+  .notes h4 i{width:12px;height:12px;background:var(--orange);display:inline-block}
+  .notes.b h4 i{background:var(--ink)}
+  .note{border-top:1px solid var(--panel-line);padding:14px 0;font-size:15px;line-height:1.75;white-space:pre-wrap;word-break:break-word}
+  .note .meta{display:block;font-family:var(--mono);font-size:12px;color:var(--mute);letter-spacing:.08em;margin-bottom:4px;white-space:normal}
+  .empty{color:var(--mute);font-size:14px;padding:14px 0;border-top:1px solid var(--panel-line)}
+
+  .table-wrap{background:var(--panel);border:1px solid var(--panel-line);overflow-x:auto}
+  table{border-collapse:collapse;width:100%;min-width:760px;font-size:14px}
+  th,td{padding:12px 14px;border-bottom:1px solid var(--panel-line);text-align:center;white-space:nowrap}
+  th{font-weight:700;background:#EDEDEB;font-size:13px}
+  th.grp-a{border-bottom:3px solid var(--orange)}
+  th.grp-b{border-bottom:3px solid var(--ink)}
+  td.name,th.name{text-align:left}
+  td.time{font-family:var(--mono);font-size:12px;color:var(--mute);letter-spacing:.04em}
+  td .del{background:none;border:1px solid var(--panel-line);padding:4px 10px;cursor:pointer;font-size:12px}
+  td .del.confirm{background:var(--orange);border-color:var(--orange)}
+  .tools{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+
+  /* ---------- lightbox ---------- */
+  .lightbox{position:fixed;inset:0;background:rgba(22,22,22,.92);z-index:50;display:flex;align-items:center;justify-content:center;padding:24px;cursor:zoom-out}
+  .lightbox img{max-width:100%;max-height:100%;object-fit:contain;background:var(--white)}
+  .lightbox .x{position:absolute;top:16px;right:16px;background:var(--orange);border:0;width:44px;height:44px;font-size:22px;cursor:pointer}
+
+  .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--ink);color:var(--white);padding:12px 20px;font-size:14px;z-index:60;letter-spacing:.06em}
+  @media (prefers-reduced-motion:reduce){*{transition:none !important;scroll-behavior:auto !important}}
+  /* standalone extras */
+  .admin-imgs .card{padding:clamp(16px,2.4vw,32px)}
+  .admin-imgs .card-head{margin-bottom:16px}
+  .section-title{flex-wrap:wrap}
+  .section-title h3{white-space:nowrap}
+  .refresh-note{font-family:var(--mono);font-size:12px;color:var(--mute);letter-spacing:.08em}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="crumb"><b>雄心大誌</b><span class="slash">/</span><span class="mono">設計提案評分</span></div>
+  <nav class="tabs" id="tabs" aria-label="頁面導覽"></nav>
+  <div class="counter mono" id="counter">0 / 6</div>
+</header>
+
+<main>
+  <!-- ===================== FORM VIEW ===================== -->
+  <section id="view-form">
+    <div class="hero">
+      <div class="eyebrow">Design Review</div>
+      <h1>請為兩個提案評分</h1>
+      <p class="lead">每個項目滑動 1–5 分，滑動時會顯示對應的符合程度；最後留下其他建議，按「送出評分」即可。</p>
+    </div>
+
+    <div id="form-notice"></div>
+
+    <section class="info" aria-label="填寫人資訊">
+      <div class="info-head"><h2>填寫人資訊</h2><span class="mono">Respondent</span></div>
+      <div class="info-fields">
+        <label class="field" id="field-name"><b>填寫人</b><input id="in-name" type="text" maxlength="40" autocomplete="name" placeholder="請輸入姓名"></label>
+        <label class="field" id="field-title"><b>職稱</b><input id="in-title" type="text" maxlength="60" autocomplete="organization-title" placeholder="請輸入職稱"></label>
+      </div>
+    </section>
+
+    <div class="proposals" id="proposals"></div>
+
+    <section class="dark" id="submit-panel">
+      <div class="submit-row">
+        <div>
+          <div class="mono" style="font-size:13px;margin-bottom:10px">Submit</div>
+          <h3>確認並送出評分</h3>
+        </div>
+        <div class="swatches" aria-hidden="true"><i style="background:var(--orange)"></i><i style="background:#E6E6E4"></i><i style="background:#8A8A86"></i><i style="background:#3A3A3A"></i></div>
+      </div>
+      <div class="rule"></div>
+      <div class="submit-row">
+        <div class="status" id="status" role="status" aria-live="polite">請先填寫填寫人資訊，並完成 6 個評分項目。</div>
+        <button class="btn orange" id="submit" type="button">送出評分</button>
+      </div>
+    </section>
+  </section>
+
+  <!-- ===================== ADMIN VIEW ===================== -->
+  <section id="view-results" hidden>
+    <div class="hero">
+      <div class="eyebrow">Results</div>
+      <h1>評分結果後台</h1>
+      <p class="lead" id="results-lead">請輸入密碼進入後台。</p>
+    </div>
+
+    <section class="dark lock" id="lock" style="margin-top:0">
+      <div class="mono" style="font-size:13px;margin-bottom:10px">Password</div>
+      <h3>請輸入後台密碼</h3>
+      <div class="rule"></div>
+      <form id="lock-form" autocomplete="off">
+        <input id="lock-input" type="password" inputmode="numeric" maxlength="40" aria-label="後台密碼" placeholder="••••">
+        <button class="btn orange" type="submit" id="lock-btn">進入</button>
+      </form>
+      <div class="err" id="lock-err" role="alert"></div>
+    </section>
+
+    <div id="results-body" hidden>
+      <div class="section-title" style="margin-top:0"><h3>提案圖片</h3><span class="mono">Upload</span></div>
+      <div class="two admin-imgs" id="admin-imgs"></div>
+      <div style="height:clamp(28px,4vw,56px)"></div>
+      <div class="stats">
+        <div class="stat"><div class="mono live">Responses</div><div class="big" id="st-count">0<small>份</small></div></div>
+        <div class="stat"><div class="mono">A案 總平均</div><div class="big" id="st-a">–<small>/ 5</small></div></div>
+        <div class="stat"><div class="mono">B案 總平均</div><div class="big" id="st-b">–<small>/ 5</small></div></div>
+      </div>
+
+      <section class="dark" style="margin-top:0">
+        <div class="submit-row">
+          <div><div class="mono" style="font-size:13px;margin-bottom:10px">Average Score</div><h3>各項目平均分數</h3></div>
+          <div class="tools mono" style="font-size:13px;gap:18px"><span><i style="display:inline-block;width:12px;height:12px;background:var(--orange);margin-right:8px"></i>A案</span><span><i style="display:inline-block;width:12px;height:12px;background:#E6E6E4;margin-right:8px"></i>B案</span></div>
+        </div>
+        <div class="rule"></div>
+        <div class="compare" id="compare"></div>
+      </section>
+
+      <div class="section-title"><h3>其他建議</h3><span class="mono">Comments</span></div>
+      <div class="two">
+        <div class="notes a"><h4><i></i>A案</h4><div id="notes-A"></div></div>
+        <div class="notes b"><h4><i></i>B案</h4><div id="notes-B"></div></div>
+      </div>
+
+      <div class="section-title">
+        <h3>所有回覆</h3>
+        <div class="tools">
+          <span class="refresh-note" id="refresh-note">每 15 秒自動更新</span>
+          <button class="btn ghost sm" id="refresh" type="button">立即更新</button>
+          <button class="btn ghost sm" id="copy-csv" type="button">複製 CSV</button>
+          <button class="btn sm" id="dl-csv" type="button">下載 CSV（Excel 可開）</button>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th class="name" rowspan="2">填寫人</th>
+              <th class="name" rowspan="2">職稱</th>
+              <th class="grp-a" colspan="3">A案</th>
+              <th class="grp-b" colspan="3">B案</th>
+              <th rowspan="2">送出時間</th>
+              <th rowspan="2">管理</th>
+            </tr>
+            <tr><th>識別度</th><th>代表性</th><th>閱讀性</th><th>識別度</th><th>代表性</th><th>閱讀性</th></tr>
+          </thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+
+
+      <div style="margin-top:40px"><button class="btn ghost sm" id="logout" type="button">登出後台</button></div>
+    </div>
+  </section>
+</main>
+
+<input type="file" id="file-input" accept="image/*" hidden>
+
+<script>
+(() => {
+  "use strict";
+
+  // ---------- constants ----------
+  const PROPOSALS = [
+    { key: "A", label: "A案", en: "Proposal A" },
+    { key: "B", label: "B案", en: "Proposal B" },
+  ];
+  const CRITERIA = [
+    { key: "identity",       label: "識別度", en: "Identity" },
+    { key: "representative", label: "代表性", en: "Representation" },
+    { key: "readability",    label: "閱讀性", en: "Readability" },
+  ];
+  const LEVELS = { 1: "不符合", 2: "一點點符合", 3: "有點符合", 4: "符合", 5: "完全符合" };
+  const TOTAL = PROPOSALS.length * CRITERIA.length;
+  const MINE_KEY = "review-my-response";
+  const PW_KEY = "review-admin-pw";
+  const REFRESH_MS = 15000;
+
+  const SUPA_URL = String(window.SUPABASE_URL || "").trim().replace(/\/+$/, "");
+  const SUPA_KEY = String(window.SUPABASE_KEY || "").trim();
+  const CONFIGURED = /^https:\/\//.test(SUPA_URL) && SUPA_KEY.length > 20 && !/貼上/.test(SUPA_KEY);
+
+  const state = { images: {}, responses: [], view: "form", submitting: false, pw: null, timer: null, pendingSlot: null };
+  const $ = (s, el = document) => el.querySelector(s);
+  const el = (tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; };
+  const store = {
+    get(area, k) { try { return window[area].getItem(k); } catch { return null; } },
+    set(area, k, v) { try { window[area].setItem(k, v); } catch {} },
+    del(area, k) { try { window[area].removeItem(k); } catch {} },
+  };
+
+  function toast(msg) {
+    const t = el("div", "toast", msg);
+    document.body.appendChild(t);
+    setTimeout(() => t.remove(), 2600);
+  }
+
+  // ---------- Supabase RPC ----------
+  async function rpc(fn, args) {
+    if (!CONFIGURED) throw Object.assign(new Error("not configured"), { code: "config" });
+    const headers = { "Content-Type": "application/json", apikey: SUPA_KEY };
+    if (SUPA_KEY.startsWith("eyJ")) headers.Authorization = "Bearer " + SUPA_KEY;
+    const res = await fetch(`${SUPA_URL}/rest/v1/rpc/${fn}`, { method: "POST", headers, body: JSON.stringify(args || {}) });
+    const text = await res.text();
+    let data = null;
+    try { data = text ? JSON.parse(text) : null; } catch {}
+    if (!res.ok) {
+      const err = new Error((data && data.message) || res.statusText || "request failed");
+      err.status = res.status; err.code = data && data.code;
+      throw err;
+    }
+    return data;
+  }
+  const isWrongPw = (e) => e && (e.code === "28P01" || /wrong password/i.test(e.message || ""));
+
+  function uuid() {
+    if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+    const b = new Uint8Array(16); crypto.getRandomValues(b);
+    b[6] = (b[6] & 0x0f) | 0x40; b[8] = (b[8] & 0x3f) | 0x80;
+    const h = Array.from(b, x => x.toString(16).padStart(2, "0")).join("");
+    return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`;
+  }
+  function token() { const b = new Uint8Array(24); crypto.getRandomValues(b); return Array.from(b, x => x.toString(16).padStart(2, "0")).join(""); }
+
+  // ---------- build the form ----------
+  function buildForm() {
+    const wrap = $("#proposals");
+    for (const p of PROPOSALS) {
+      const card = el("article", "card");
+      card.dataset.p = p.key;
+      card.id = "card-" + p.key;
+
+      const head = el("div", "card-head");
+      const h2 = el("h2");
+      h2.appendChild(el("span", "chip"));
+      h2.appendChild(document.createTextNode(p.label));
+      head.appendChild(h2);
+      head.appendChild(el("span", "mono", p.en));
+      card.appendChild(head);
+
+      const slot = el("div", "img-slot");
+      slot.id = "slot-" + p.key;
+      card.appendChild(slot);
+
+      const crits = el("div", "criteria");
+      for (const c of CRITERIA) {
+        const row = el("div", "crit untouched");
+        row.dataset.p = p.key; row.dataset.c = c.key;
+        const name = el("div", "crit-name", c.label);
+        name.appendChild(el("small", null, c.en));
+        const ctl = el("div", "crit-ctl");
+        const read = el("div", "crit-read");
+        read.append(el("span", "num", "–"), el("span", "txt", "請滑動評分"));
+        const range = document.createElement("input");
+        range.type = "range"; range.min = "1"; range.max = "5"; range.step = "1"; range.value = "3";
+        range.setAttribute("aria-label", `${p.label} ${c.label}，1 到 5 分`);
+        range.style.setProperty("--fill", "50%");
+        const ticks = el("div", "ticks mono");
+        for (let i = 1; i <= 5; i++) ticks.appendChild(el("span", null, String(i)));
+        ctl.append(read, range, ticks);
+        row.append(name, ctl);
+        crits.appendChild(row);
+
+        const onMove = () => { setRow(row, Number(range.value), true); updateProgress(); };
+        ["input", "change", "pointerup", "keyup"].forEach(ev => range.addEventListener(ev, onMove));
+      }
+      card.appendChild(crits);
+
+      const sugg = el("label", "sugg");
+      const sl = el("div", "sugg-label");
+      sl.append(el("b", null, "其他建議"), el("span", "mono", "Optional"));
+      const ta = document.createElement("textarea");
+      ta.id = "note-" + p.key;
+      ta.placeholder = `對${p.label}的其他想法或建議（選填）`;
+      ta.maxLength = 2000;
+      sugg.append(sl, ta);
+      card.appendChild(sugg);
+
+      wrap.appendChild(card);
+    }
+    renderSlots();
+  }
+
+  function setRow(row, v, touched) {
+    const range = $("input", row);
+    range.value = String(v);
+    range.style.setProperty("--fill", ((v - 1) / 4 * 100) + "%");
+    if (touched) {
+      row.classList.remove("untouched", "missing");
+      row.dataset.touched = "1";
+      $(".num", row).textContent = String(v);
+      $(".txt", row).textContent = LEVELS[v];
+      range.setAttribute("aria-valuetext", `${v} 分，${LEVELS[v]}`);
+    }
+  }
+  const rows = () => Array.from(document.querySelectorAll(".crit"));
+  const rowOf = (p, c) => document.querySelector(`.crit[data-p="${p}"][data-c="${c}"]`);
+
+  function updateProgress() {
+    const done = rows().filter(r => r.dataset.touched === "1").length;
+    $("#counter").textContent = `${done} / ${TOTAL}`;
+    const s = $("#status");
+    if (!s.dataset.locked && !state.submitting) {
+      s.className = "status";
+      s.textContent = done < TOTAL ? `已完成 ${done} / ${TOTAL} 項評分，全部滑動後即可送出。` : "全部項目都已評分，可以送出了。";
+    }
+  }
+
+  // ---------- images ----------
+  function placeholder(text) {
+    const ph = el("div", "placeholder");
+    ph.append(el("div", "ph-bar"), el("div", "ph-block"));
+    const lines = el("div", "ph-lines");
+    lines.append(el("i"), el("i"), el("i"));
+    ph.appendChild(lines);
+    const lab = el("div", "ph-label");
+    lab.appendChild(el("span", null, text));
+    ph.appendChild(lab);
+    return ph;
+  }
+
+  function fillSlot(slot, p, src) {
+    slot.replaceChildren();
+    if (src) {
+      const img = document.createElement("img");
+      img.src = src; img.alt = `${p.label} 設計圖`;
+      img.addEventListener("click", () => openLightbox(img.src, img.alt));
+      slot.appendChild(img);
+    } else {
+      slot.appendChild(placeholder(`${p.label} 圖片準備中`));
+    }
+  }
+
+  function renderSlots() {
+    for (const p of PROPOSALS) fillSlot($("#slot-" + p.key), p, state.images[p.key]);
+    renderAdminImages();
+  }
+
+  async function loadImages() {
+    if (!CONFIGURED) return;
+    try {
+      const list = await rpc("get_images");
+      const next = {};
+      (list || []).forEach(r => { if (r && (r.slot === "A" || r.slot === "B")) next[r.slot] = r.data_url; });
+      state.images = next;
+      renderSlots();
+    } catch (e) { console.warn("images", e); }
+  }
+
+  function renderAdminImages() {
+    const box = $("#admin-imgs");
+    if (!box) return;
+    box.replaceChildren();
+    for (const p of PROPOSALS) {
+      const card = el("div", "card");
+      const head = el("div", "card-head");
+      const h2 = el("h2"); h2.appendChild(el("span", "chip")); h2.appendChild(document.createTextNode(p.label));
+      head.append(h2, el("span", "mono", p.en));
+      card.dataset.p = p.key;
+      const slot = el("div", "img-slot");
+      fillSlot(slot, p, state.images[p.key]);
+      const tools = el("div", "slot-tools");
+      const up = el("button", "btn sm", state.images[p.key] ? "更換圖片" : "上傳圖片");
+      up.type = "button";
+      up.addEventListener("click", () => pickFile(p.key));
+      tools.appendChild(up);
+      if (state.images[p.key]) {
+        const rm = el("button", "btn ghost sm", "移除圖片");
+        rm.type = "button";
+        rm.addEventListener("click", async () => {
+          try { await rpc("admin_set_image", { pw: state.pw, p_slot: p.key, p_data: "" }); delete state.images[p.key]; renderSlots(); toast(`${p.label} 圖片已移除`); }
+          catch (e) { handleAdminError(e, "移除失敗"); }
+        });
+        tools.appendChild(rm);
+      }
+      const msg = el("span", "slot-msg"); msg.id = "slotmsg-" + p.key;
+      tools.appendChild(msg);
+      card.append(head, slot, tools);
+      box.appendChild(card);
+    }
+  }
+
+  function pickFile(key) {
+    state.pendingSlot = key;
+    const fi = $("#file-input");
+    fi.value = "";
+    fi.click();
+  }
+
+  function compressImage(file) {
+    return new Promise((resolve, reject) => {
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = () => {
+        URL.revokeObjectURL(url);
+        const MAX = 2000;
+        const scale = Math.min(1, MAX / Math.max(img.naturalWidth, img.naturalHeight));
+        const w = Math.max(1, Math.round(img.naturalWidth * scale)), h = Math.max(1, Math.round(img.naturalHeight * scale));
+        const c = document.createElement("canvas"); c.width = w; c.height = h;
+        const ctx = c.getContext("2d");
+        ctx.fillStyle = "#FFFFFF"; ctx.fillRect(0, 0, w, h);
+        ctx.drawImage(img, 0, 0, w, h);
+        let q = 0.88, out = c.toDataURL("image/jpeg", q);
+        while (out.length > 4500000 && q > 0.4) { q -= 0.12; out = c.toDataURL("image/jpeg", q); }
+        resolve(out);
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("無法讀取這張圖片")); };
+      img.src = url;
+    });
+  }
+
+  $("#file-input").addEventListener("change", async (e) => {
+    const file = e.target.files && e.target.files[0];
+    const key = state.pendingSlot;
+    if (!file || !key || !state.pw) return;
+    const msg = $("#slotmsg-" + key);
+    if (msg) msg.textContent = "處理並上傳中…";
+    try {
+      const dataUrl = await compressImage(file);
+      await rpc("admin_set_image", { pw: state.pw, p_slot: key, p_data: dataUrl });
+      state.images[key] = dataUrl;
+      renderSlots();
+      toast(`${key}案 圖片已更新`);
+    } catch (err) {
+      console.error(err);
+      if (isWrongPw(err)) return handleAdminError(err);
+      const m = $("#slotmsg-" + key);
+      if (m) m.textContent = "上傳失敗：" + (err.message || "請再試一次");
+    }
+  });
+
+  // ---------- lightbox ----------
+  function openLightbox(src, alt) {
+    const lb = el("div", "lightbox");
+    const img = document.createElement("img"); img.src = src; img.alt = alt;
+    const x = el("button", "x", "×"); x.type = "button"; x.setAttribute("aria-label", "關閉");
+    lb.append(img, x);
+    const close = () => { lb.remove(); document.removeEventListener("keydown", onKey); };
+    const onKey = (ev) => { if (ev.key === "Escape") close(); };
+    lb.addEventListener("click", close);
+    document.addEventListener("keydown", onKey);
+    document.body.appendChild(lb);
+  }
+
+  // ---------- submit ----------
+  function setStatus(text, kind, lock) {
+    const s = $("#status");
+    s.className = "status" + (kind ? " " + kind : "");
+    s.replaceChildren();
+    if (kind === "ok") s.appendChild(el("span", "done-mark"));
+    s.appendChild(document.createTextNode(text));
+    if (lock) s.dataset.locked = "1"; else delete s.dataset.locked;
+  }
+
+  function loadMine() { try { return JSON.parse(store.get("localStorage", MINE_KEY) || "null"); } catch { return null; } }
+
+  $("#submit").addEventListener("click", async () => {
+    if (state.submitting) return;
+    if (!CONFIGURED) { setStatus("網站尚未連接資料庫，請通知主辦人。", "err", true); return; }
+    const who = { name: $("#in-name").value.trim(), title: $("#in-title").value.trim() };
+    const empty = [["name", "填寫人"], ["title", "職稱"]].filter(([k]) => !who[k]);
+    if (empty.length) {
+      empty.forEach(([k]) => $("#field-" + k).classList.add("missing"));
+      setStatus(`請填寫「${empty.map(f => f[1]).join("」和「")}」。`, "err", false);
+      $(".info").scrollIntoView({ behavior: "smooth", block: "center" });
+      setTimeout(() => $("#in-" + empty[0][0]).focus({ preventScroll: true }), 300);
+      return;
+    }
+    const missing = rows().filter(r => r.dataset.touched !== "1");
+    if (missing.length) {
+      missing.forEach(r => { r.classList.add("missing"); $(".txt", r).textContent = "請滑動評分"; });
+      setStatus(`還有 ${missing.length} 個項目尚未評分（已標示橘色）。`, "err", false);
+      missing[0].scrollIntoView({ behavior: "smooth", block: "center" });
+      return;
+    }
+
+    const mine = loadMine() || { id: uuid(), token: token() };
+    const payload = { id: mine.id, token: mine.token, name: who.name, title: who.title };
+    for (const p of PROPOSALS) {
+      const k = p.key.toLowerCase();
+      for (const c of CRITERIA) payload[`${k}_${c.key}`] = Number($("input", rowOf(p.key, c.key)).value);
+      payload[`${k}_note`] = $("#note-" + p.key).value.trim();
+    }
+
+    state.submitting = true;
+    const btn = $("#submit");
+    btn.disabled = true; btn.textContent = "送出中…";
+    try {
+      await rpc("submit_response", { p: payload });
+      store.set("localStorage", MINE_KEY, JSON.stringify({ id: mine.id, token: mine.token, values: payload }));
+      setStatus("已送出，謝謝你的評分！如需修改，調整後再按一次即可更新。", "ok", true);
+      btn.textContent = "更新評分";
+      toast("評分已送出");
+    } catch (err) {
+      console.error(err);
+      setStatus("送出失敗，請檢查網路後再試一次。", "err", true);
+      btn.textContent = loadMine() ? "更新評分" : "送出評分";
+    } finally {
+      state.submitting = false;
+      btn.disabled = false;
+    }
+  });
+
+  function prefillMine() {
+    const mine = loadMine();
+    if (!mine || !mine.values) return;
+    const v = mine.values;
+    if (v.name) $("#in-name").value = v.name;
+    if (v.title) $("#in-title").value = v.title;
+    for (const p of PROPOSALS) {
+      const k = p.key.toLowerCase();
+      for (const c of CRITERIA) {
+        const n = Number(v[`${k}_${c.key}`]);
+        if (n >= 1 && n <= 5) setRow(rowOf(p.key, c.key), n, true);
+      }
+      if (typeof v[`${k}_note`] === "string") $("#note-" + p.key).value = v[`${k}_note`];
+    }
+    $("#submit").textContent = "更新評分";
+    setStatus("你之前已在這支手機送出過評分，已帶入上次的內容；修改後按「更新評分」即可。", "ok", true);
+    updateProgress();
+  }
+
+  for (const k of ["name", "title"]) {
+    $("#in-" + k).addEventListener("input", () => $("#field-" + k).classList.remove("missing"));
+  }
+
+  // ---------- views / nav ----------
+  function buildNav() {
+    const nav = $("#tabs");
+    nav.replaceChildren();
+    for (const [id, n, label] of [["A", "01", "A案"], ["B", "02", "B案"], ["submit", "03", "送出"], ["results", "04", "後台"]]) {
+      const b = el("button");
+      b.type = "button";
+      b.dataset.target = id;
+      b.appendChild(document.createTextNode(n));
+      b.appendChild(el("span", null, label));
+      b.addEventListener("click", () => {
+        if (id === "results") { if (location.hash === "#results") show("results"); else location.hash = "results"; return; }
+        if (state.view !== "form") { history.replaceState(null, "", location.pathname + location.search); show("form"); }
+        const t = id === "submit" ? $("#submit-panel") : $("#card-" + id);
+        if (t) t.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+      nav.appendChild(b);
+    }
+    markActive();
+  }
+
+  function markActive() {
+    let current = "A";
+    if (state.view === "results") current = "results";
+    else for (const id of ["A", "B", "submit"]) {
+      const t = id === "submit" ? $("#submit-panel") : $("#card-" + id);
+      if (t && t.getBoundingClientRect().top < window.innerHeight * 0.45) current = id;
+    }
+    document.querySelectorAll("#tabs button").forEach(b => b.classList.toggle("active", b.dataset.target === current));
+  }
+  window.addEventListener("scroll", () => { if (state.view === "form") markActive(); }, { passive: true });
+
+  function show(view) {
+    state.view = view;
+    $("#view-form").hidden = view !== "form";
+    $("#view-results").hidden = view !== "results";
+    $("#counter").hidden = view !== "form";
+    if (view === "results") renderGate(); else stopRefresh();
+    markActive();
+    window.scrollTo(0, 0);
+  }
+  function routeFromHash() { show((location.hash || "") === "#results" ? "results" : "form"); }
+  window.addEventListener("hashchange", routeFromHash);
+
+  // ---------- admin ----------
+  function renderGate() {
+    const u = !!state.pw;
+    $("#lock").hidden = u;
+    $("#results-body").hidden = !u;
+    $("#results-lead").textContent = u ? "所有回覆、平均分數與其他建議。最上方可上傳 A案、B案 圖片。" : "請輸入密碼進入後台。";
+    if (!u) { setTimeout(() => { const i = $("#lock-input"); if (i && !$("#lock").hidden) i.focus(); }, 50); return; }
+    renderAdminImages();
+    loadResponses();
+    startRefresh();
+  }
+
+  function startRefresh() {
+    stopRefresh();
+    state.timer = setInterval(() => { if (state.view === "results" && state.pw && !document.hidden) loadResponses(true); }, REFRESH_MS);
+  }
+  function stopRefresh() { if (state.timer) { clearInterval(state.timer); state.timer = null; } }
+
+  function handleAdminError(e, fallback) {
+    if (isWrongPw(e)) {
+      state.pw = null; store.del("sessionStorage", PW_KEY);
+      $("#lock-err").textContent = "密碼已變更或失效，請重新輸入。";
+      renderGate();
+    } else {
+      toast(fallback || "連線失敗，請稍後再試");
+    }
+  }
+
+  $("#lock-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const input = $("#lock-input");
+    const pw = input.value;
+    if (!pw) return;
+    if (!CONFIGURED) { $("#lock-err").textContent = "網站尚未連接資料庫，請先在 config.js 填入 Supabase 設定。"; return; }
+    $("#lock-btn").disabled = true;
+    try {
+      await rpc("admin_login", { pw });
+      state.pw = pw;
+      store.set("sessionStorage", PW_KEY, pw);
+      input.value = ""; $("#lock-err").textContent = "";
+      renderGate();
+    } catch (err) {
+      $("#lock-err").textContent = isWrongPw(err) ? "密碼錯誤，請再試一次。" : "無法連線到資料庫，請稍後再試。";
+      input.value = ""; input.focus();
+    } finally {
+      $("#lock-btn").disabled = false;
+    }
+  });
+
+  $("#logout").addEventListener("click", () => {
+    state.pw = null; store.del("sessionStorage", PW_KEY); stopRefresh(); renderGate();
+  });
+  $("#refresh").addEventListener("click", () => loadResponses());
+
+  let loading = false;
+  async function loadResponses(silent) {
+    if (!state.pw || loading) return;
+    loading = true;
+    try {
+      const list = await rpc("admin_list", { pw: state.pw });
+      state.responses = (list || []).map(r => ({
+        id: r.id, name: r.name, title: r.title, updatedAt: r.updated_at, createdAt: r.created_at,
+        A: { identity: r.a_identity, representative: r.a_representative, readability: r.a_readability, note: r.a_note || "" },
+        B: { identity: r.b_identity, representative: r.b_representative, readability: r.b_readability, note: r.b_note || "" },
+      }));
+      const t = new Date(), pad = (x) => String(x).padStart(2, "0");
+      $("#refresh-note").textContent = `每 15 秒自動更新・最後更新 ${pad(t.getHours())}:${pad(t.getMinutes())}:${pad(t.getSeconds())}`;
+      renderResults();
+    } catch (e) {
+      console.warn(e);
+      if (isWrongPw(e) || !silent) handleAdminError(e, "讀取回覆失敗，請稍後再試");
+    } finally { loading = false; }
+  }
+
+  // ---------- results ----------
+  const fmt = (n) => (n == null || isNaN(n)) ? "–" : n.toFixed(2);
+  function avg(list) { const v = list.filter(x => typeof x === "number" && x >= 1 && x <= 5); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null; }
+  function timeStr(iso) {
+    if (!iso) return "";
+    const d = new Date(iso);
+    if (isNaN(d)) return "";
+    const p = (x) => String(x).padStart(2, "0");
+    return `${d.getMonth() + 1}/${d.getDate()} ${p(d.getHours())}:${p(d.getMinutes())}`;
+  }
+
+  function renderResults() {
+    const list = state.responses;
+    $("#st-count").replaceChildren(document.createTextNode(String(list.length)), el("small", null, "份"));
+    const overall = (k) => avg(list.flatMap(r => CRITERIA.map(c => r[k][c.key])));
+    $("#st-a").replaceChildren(document.createTextNode(fmt(overall("A"))), el("small", null, "/ 5"));
+    $("#st-b").replaceChildren(document.createTextNode(fmt(overall("B"))), el("small", null, "/ 5"));
+
+    const cmp = $("#compare");
+    cmp.replaceChildren();
+    for (const c of CRITERIA) {
+      const row = el("div", "cmp-row");
+      row.appendChild(el("div", "cmp-name", c.label));
+      const bars = el("div", "bars");
+      for (const p of PROPOSALS) {
+        const vals = list.map(r => r[p.key][c.key]);
+        const a = avg(vals);
+        const bar = el("div", "bar " + p.key.toLowerCase());
+        bar.appendChild(el("span", "who", p.label));
+        const tr = el("div", "track");
+        const f = el("div", "fill");
+        f.style.width = a == null ? "0%" : (a / 5 * 100) + "%";
+        tr.appendChild(f);
+        bar.append(tr, el("span", "val", fmt(a)));
+        bars.appendChild(bar);
+        const counts = [1, 2, 3, 4, 5].map(s => vals.filter(v => v === s).length);
+        bars.appendChild(el("div", "dist", `${p.label} 分布　` + counts.map((n, i) => `${i + 1}分×${n}`).join("　")));
+      }
+      row.appendChild(bars);
+      cmp.appendChild(row);
+    }
+    const scale = el("div", "scale mono");
+    scale.append(el("span", "sp1"), el("span"));
+    const sd = el("div");
+    for (let i = 0; i <= 5; i++) sd.appendChild(el("span", null, String(i)));
+    scale.append(sd, el("span"));
+    cmp.appendChild(scale);
+
+    for (const p of PROPOSALS) {
+      const box = $("#notes-" + p.key);
+      box.replaceChildren();
+      const withNotes = list.filter(r => r[p.key].note);
+      if (!withNotes.length) { box.appendChild(el("div", "empty", "目前還沒有建議。")); continue; }
+      for (const r of withNotes) {
+        const n = el("div", "note");
+        n.appendChild(el("span", "meta", `${r.name || "未填姓名"}${r.title ? "（" + r.title + "）" : ""}　·　${timeStr(r.updatedAt)}`));
+        n.appendChild(document.createTextNode(r[p.key].note));
+        box.appendChild(n);
+      }
+    }
+
+    const tbody = $("#rows");
+    tbody.replaceChildren();
+    if (!list.length) {
+      const tr = el("tr"); const td = el("td", null, "目前還沒有人送出評分。");
+      td.colSpan = 10; td.style.color = "var(--mute)"; tr.appendChild(td); tbody.appendChild(tr);
+    }
+    for (const r of list) {
+      const tr = el("tr");
+      tr.appendChild(el("td", "name", r.name || "未填姓名"));
+      tr.appendChild(el("td", "name", r.title || "–"));
+      for (const p of PROPOSALS) for (const c of CRITERIA) tr.appendChild(el("td", null, r[p.key][c.key] ? String(r[p.key][c.key]) : "–"));
+      tr.appendChild(el("td", "time", timeStr(r.updatedAt)));
+      const tdDel = el("td");
+      const b = el("button", "del", "刪除");
+      b.type = "button";
+      b.addEventListener("click", async () => {
+        if (!b.classList.contains("confirm")) {
+          b.classList.add("confirm"); b.textContent = "確定刪除？";
+          setTimeout(() => { if (b.isConnected) { b.classList.remove("confirm"); b.textContent = "刪除"; } }, 4000);
+          return;
+        }
+        b.disabled = true;
+        try { await rpc("admin_delete", { pw: state.pw, p_id: r.id }); toast("已刪除"); loadResponses(); }
+        catch (e) { b.disabled = false; handleAdminError(e, "刪除失敗"); }
+      });
+      tdDel.appendChild(b);
+      tr.appendChild(tdDel);
+      tbody.appendChild(tr);
+    }
+  }
+
+  function buildCSV() {
+    const esc = (v) => { const s = v == null ? "" : String(v); return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
+    const head = ["填寫人", "職稱", "送出時間"];
+    for (const p of PROPOSALS) { for (const c of CRITERIA) head.push(`${p.label}-${c.label}`); head.push(`${p.label}-其他建議`); }
+    const lines = [head.map(esc).join(",")];
+    for (const r of state.responses) {
+      const row = [r.name, r.title, r.updatedAt ? new Date(r.updatedAt).toLocaleString("zh-TW") : ""];
+      for (const p of PROPOSALS) { for (const c of CRITERIA) row.push(r[p.key][c.key]); row.push(r[p.key].note); }
+      lines.push(row.map(esc).join(","));
+    }
+    return lines.join("\r\n");
+  }
+  $("#copy-csv").addEventListener("click", async () => {
+    try { await navigator.clipboard.writeText(buildCSV()); toast("已複製，可直接貼到試算表"); }
+    catch { toast("無法複製"); }
+  });
+  $("#dl-csv").addEventListener("click", () => {
+    const blob = new Blob(["﻿" + buildCSV()], { type: "text/csv;charset=utf-8" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `設計提案評分_${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  });
+
+  // ---------- init ----------
+  buildForm();
+  buildNav();
+  updateProgress();
+  prefillMine();
+  state.pw = store.get("sessionStorage", PW_KEY);
+  routeFromHash();
+  if (!CONFIGURED) {
+    const n = el("div", "notice");
+    n.appendChild(el("b", null, "網站尚未連接資料庫。"));
+    n.appendChild(document.createTextNode("請在 config.js 填入 Supabase 的 Project URL 與 Key。"));
+    $("#form-notice").appendChild(n);
+  }
+  loadImages();
+  if (state.pw && state.view !== "results") { /* verified on first admin call */ }
+})();
+</script>
+</body>
+</html>
