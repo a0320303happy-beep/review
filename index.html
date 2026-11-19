@@ -254,9 +254,9 @@
 
     <div id="form-notice"></div>
 
-    <section class="info" aria-label="填寫人資訊">
-      <div class="info-head"><h2>填寫人資訊</h1><span class="mono">Respondent</span></div>
-      <div class="info-fields">
+    <section class="info" aria-label="填寫資訊">
+      <div class="info-head"><h2>填寫資訊</h2><span class="mono">Respondent</span></div>
+      <div class="info-fields" style="grid-template-columns:minmax(0,1fr)">
         <label class="field" id="field-title"><b>職稱</b><input id="in-title" type="text" maxlength="60" autocomplete="organization-title" placeholder="請輸入職稱"></label>
       </div>
     </section>
@@ -273,7 +273,7 @@
       </div>
       <div class="rule"></div>
       <div class="submit-row">
-        <div class="status" id="status" role="status" aria-live="polite">請先填寫填寫人資訊，並完成 6 個評分項目。</div>
+        <div class="status" id="status" role="status" aria-live="polite">請先填寫職稱，並完成 6 個評分項目。</div>
         <button class="btn orange" id="submit" type="button">送出評分</button>
       </div>
     </section>
@@ -336,14 +336,13 @@
         <table>
           <thead>
             <tr>
-              <th class="name" rowspan="2">填寫人</th>
               <th class="name" rowspan="2">職稱</th>
               <th class="grp-a" colspan="3">A案</th>
               <th class="grp-b" colspan="3">B案</th>
               <th rowspan="2">送出時間</th>
               <th rowspan="2">管理</th>
             </tr>
-            <tr><th>識別度</th><th>代表性</th><th>易讀性</th><th>識別度</th><th>代表性</th><th>閱讀性</th></tr>
+            <tr><th>識別度</th><th>代表性</th><th>易讀性</th><th>識別度</th><th>代表性</th><th>易讀性</th></tr>
           </thead>
           <tbody id="rows"></tbody>
         </table>
@@ -369,7 +368,7 @@
   const CRITERIA = [
     { key: "identity",       label: "識別度", en: "Identity" },
     { key: "representative", label: "代表性", en: "Representation" },
-    { key: "readability",    label: "閱讀性", en: "Readability" },
+    { key: "readability",    label: "易讀性", en: "Readability" },
   ];
   const LEVELS = { 1: "不符合", 2: "一點點符合", 3: "有點符合", 4: "符合", 5: "完全符合" };
   const TOTAL = PROPOSALS.length * CRITERIA.length;
@@ -658,8 +657,8 @@
   $("#submit").addEventListener("click", async () => {
     if (state.submitting) return;
     if (!CONFIGURED) { setStatus("網站尚未連接資料庫，請通知主辦人。", "err", true); return; }
-    const who = { name: $("#in-name").value.trim(), title: $("#in-title").value.trim() };
-    const empty = [["name", "填寫人"], ["title", "職稱"]].filter(([k]) => !who[k]);
+    const who = { name: "匿名", title: $("#in-title").value.trim() };
+    const empty = [["title", "職稱"]].filter(([k]) => !who[k]);
     if (empty.length) {
       empty.forEach(([k]) => $("#field-" + k).classList.add("missing"));
       setStatus(`請填寫「${empty.map(f => f[1]).join("」和「")}」。`, "err", false);
@@ -706,7 +705,6 @@
     const mine = loadMine();
     if (!mine || !mine.values) return;
     const v = mine.values;
-    if (v.name) $("#in-name").value = v.name;
     if (v.title) $("#in-title").value = v.title;
     for (const p of PROPOSALS) {
       const k = p.key.toLowerCase();
@@ -721,7 +719,7 @@
     updateProgress();
   }
 
-  for (const k of ["name", "title"]) {
+  for (const k of ["title"]) {
     $("#in-" + k).addEventListener("input", () => $("#field-" + k).classList.remove("missing"));
   }
 
@@ -898,7 +896,7 @@
       if (!withNotes.length) { box.appendChild(el("div", "empty", "目前還沒有建議。")); continue; }
       for (const r of withNotes) {
         const n = el("div", "note");
-        n.appendChild(el("span", "meta", `${r.name || "未填姓名"}${r.title ? "（" + r.title + "）" : ""}　·　${timeStr(r.updatedAt)}`));
+        n.appendChild(el("span", "meta", `${r.title || "未填職稱"}　·　${timeStr(r.updatedAt)}`));
         n.appendChild(document.createTextNode(r[p.key].note));
         box.appendChild(n);
       }
@@ -908,11 +906,10 @@
     tbody.replaceChildren();
     if (!list.length) {
       const tr = el("tr"); const td = el("td", null, "目前還沒有人送出評分。");
-      td.colSpan = 10; td.style.color = "var(--mute)"; tr.appendChild(td); tbody.appendChild(tr);
+      td.colSpan = 9; td.style.color = "var(--mute)"; tr.appendChild(td); tbody.appendChild(tr);
     }
     for (const r of list) {
       const tr = el("tr");
-      tr.appendChild(el("td", "name", r.name || "未填姓名"));
       tr.appendChild(el("td", "name", r.title || "–"));
       for (const p of PROPOSALS) for (const c of CRITERIA) tr.appendChild(el("td", null, r[p.key][c.key] ? String(r[p.key][c.key]) : "–"));
       tr.appendChild(el("td", "time", timeStr(r.updatedAt)));
@@ -937,11 +934,11 @@
 
   function buildCSV() {
     const esc = (v) => { const s = v == null ? "" : String(v); return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
-    const head = ["填寫人", "職稱", "送出時間"];
+    const head = ["職稱", "送出時間"];
     for (const p of PROPOSALS) { for (const c of CRITERIA) head.push(`${p.label}-${c.label}`); head.push(`${p.label}-其他建議`); }
     const lines = [head.map(esc).join(",")];
     for (const r of state.responses) {
-      const row = [r.name, r.title, r.updatedAt ? new Date(r.updatedAt).toLocaleString("zh-TW") : ""];
+      const row = [r.title, r.updatedAt ? new Date(r.updatedAt).toLocaleString("zh-TW") : ""];
       for (const p of PROPOSALS) { for (const c of CRITERIA) row.push(r[p.key][c.key]); row.push(r[p.key].note); }
       lines.push(row.map(esc).join(","));
     }
