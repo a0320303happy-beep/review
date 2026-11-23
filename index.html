@@ -272,7 +272,16 @@
   .pager .pg-note b{color:var(--orange);font-weight:700}
   .pager .btn.orange{font-size:17px;padding:16px 30px;font-weight:700}
   .prev-row{margin-bottom:clamp(16px,2.5vw,28px)}
+  .pg-note.err{color:#FF9C6B}
+  .pg-note.ok{color:var(--orange)}
+  .pager .btn.orange{min-width:180px}
+  .pager .btn.orange.sent{background:#F4CDB1;border-color:#F4CDB1;color:#7A4321;cursor:default;filter:none}
   .step-tag{display:inline-block;font-family:var(--mono);font-size:13px;letter-spacing:.14em;color:var(--mute);margin-top:10px}
+  .img-group + .img-group{margin-top:clamp(20px,3vw,36px)}
+  .img-sub{display:flex;align-items:baseline;gap:14px;border-bottom:2px solid var(--ink);padding-bottom:10px;margin:0 0 16px}
+  .img-sub .sec-num{font-family:var(--mono);font-size:16px;color:var(--orange-ink);letter-spacing:.1em}
+  .img-sub h4{margin:0;font-weight:900;font-size:clamp(20px,2vw,26px);letter-spacing:.06em}
+  .img-sub .en{margin-left:auto;font-family:var(--mono);font-size:12px;color:var(--mute);letter-spacing:.14em}
   th.grp{border-bottom:3px solid var(--ink)}
   th.grp.o{border-bottom-color:var(--orange)}
   th.grp.g{border-bottom-color:#8A8A86}
@@ -283,7 +292,7 @@
 <header class="topbar">
   <div class="crumb"><b>雄心大誌</b><span class="slash">/</span><span class="mono">設計提案評分</span></div>
   <nav class="tabs" id="tabs" aria-label="頁面導覽"></nav>
-  <div class="counter mono" id="counter">0 / 15</div>
+  <div class="counter mono" id="counter">0 / 9</div>
 </header>
 
 <main>
@@ -307,24 +316,17 @@
 
     <div id="sections"></div>
 
-    <div class="pager" id="pager-next">
-      <div class="pg-note" id="pg-note">封面提案完成後，前往下一頁為內頁版式評分。</div>
-      <button class="btn orange" id="go-layout" type="button">下一頁：02 內頁版式 →</button>
+    <div class="pager" id="pager-cover">
+      <div class="pg-note" id="note-cover" role="status" aria-live="polite">完成按送出即可</div>
+      <button class="btn orange" id="send-cover" type="button">送出</button>
     </div>
 
     <div class="prev-row" id="pager-prev"><button class="btn ghost" id="go-cover" type="button">← 上一頁：01 封面提案</button></div>
 
-    <section class="dark" id="submit-panel">
-      <div>
-        <div class="mono" style="font-size:13px;margin-bottom:10px">Submit</div>
-        <h3>確認並送出評分</h3>
-      </div>
-      <div class="rule"></div>
-      <div class="submit-row">
-        <div class="status" id="status" role="status" aria-live="polite">請先填寫職稱，並完成 15 個評分項目。</div>
-        <button class="btn orange" id="submit" type="button">送出評分</button>
-      </div>
-    </section>
+    <div class="pager" id="pager-layout">
+      <div class="pg-note" id="note-layout" role="status" aria-live="polite">完成按送出即可</div>
+      <button class="btn orange" id="send-layout" type="button">送出</button>
+    </div>
   </section>
 
   <!-- ===================== ADMIN VIEW ===================== -->
@@ -348,7 +350,7 @@
 
     <div id="results-body" hidden>
       <div class="section-title" style="margin-top:0"><h3>提案圖片</h3><span class="mono">Upload</span></div>
-      <div class="admin-imgs" id="admin-imgs"></div>
+      <div id="admin-imgs"></div>
       <div style="height:clamp(28px,4vw,56px)"></div>
 
       <div class="stats">
@@ -517,7 +519,11 @@
           ctl.append(read, range, ticks);
           row.append(name, ctl);
           crits.appendChild(row);
-          const onMove = () => { setRow(row, Number(range.value), true); updateProgress(); };
+          const onMove = () => {
+            const before = range.dataset.last;
+            setRow(row, Number(range.value), true); updateProgress();
+            if (before !== range.value) { range.dataset.last = range.value; markDirty(sec.key); }
+          };
           ["input", "change", "pointerup", "keyup"].forEach(ev => range.addEventListener(ev, onMove));
         }
         card.appendChild(crits);
@@ -545,14 +551,10 @@
   const rowOf = (s, i, c) => document.querySelector(`.crit[data-s="${s}"][data-i="${i}"][data-c="${c}"]`);
 
   function updateProgress() {
-    const done = rows().filter(r => r.dataset.touched === "1").length;
-    $("#counter").textContent = `${done} / ${TOTAL}`;
-    if (typeof updatePagerNote === "function") updatePagerNote();
-    const s = $("#status");
-    if (!s.dataset.locked && !state.submitting) {
-      s.className = "status";
-      s.textContent = `已完成 ${done} / ${TOTAL} 項評分，即可送出。`;
-    }
+    const key = state.view === "layout" ? "layout" : "cover";
+    const mine = rows().filter(r => r.dataset.s === key);
+    const done = mine.filter(r => r.dataset.touched === "1").length;
+    $("#counter").textContent = `${done} / ${mine.length}`;
   }
 
   // ---------- images ----------
@@ -603,31 +605,39 @@
     const box = $("#admin-imgs");
     if (!box) return;
     box.replaceChildren();
-    for (const { sec, it } of allItems()) {
-      const card = el("div", "card");
-      const head = el("div", "card-head");
-      const h2 = el("h2"); h2.appendChild(document.createTextNode(it.label));
-      head.append(h2, el("span", "sec-tag", sec.num + " " + sec.label));
-      const slot = el("div", "img-slot");
-      fillSlot(slot, it.label, state.images[it.slot]);
-      const tools = el("div", "slot-tools");
-      const up = el("button", "btn sm", state.images[it.slot] ? "更換圖片" : "上傳圖片");
-      up.type = "button";
-      up.addEventListener("click", () => pickFile(it.slot));
-      tools.appendChild(up);
-      if (state.images[it.slot]) {
-        const rm = el("button", "btn ghost sm", "移除");
-        rm.type = "button";
-        rm.addEventListener("click", async () => {
-          try { await rpc("admin_set_image", { pw: state.pw, p_slot: it.slot, p_data: "" }); delete state.images[it.slot]; renderSlots(); toast(`${it.label} 圖片已移除`); }
-          catch (e) { imageError(e, it.slot); }
-        });
-        tools.appendChild(rm);
+    for (const sec of SECTIONS) {
+      const group = el("div", "img-group");
+      const sub = el("div", "img-sub");
+      sub.append(el("span", "sec-num", sec.num), el("h4", null, sec.label), el("span", "en", sec.en));
+      const grid = el("div", "admin-imgs");
+      for (const it of sec.items) {
+        const card = el("div", "card");
+        const head = el("div", "card-head");
+        const h2 = el("h2"); h2.appendChild(document.createTextNode(it.label));
+        head.append(h2, el("span", "sec-tag", it.en));
+        const slot = el("div", "img-slot");
+        fillSlot(slot, it.label, state.images[it.slot]);
+        const tools = el("div", "slot-tools");
+        const up = el("button", "btn sm", state.images[it.slot] ? "更換圖片" : "上傳圖片");
+        up.type = "button";
+        up.addEventListener("click", () => pickFile(it.slot));
+        tools.appendChild(up);
+        if (state.images[it.slot]) {
+          const rm = el("button", "btn ghost sm", "移除");
+          rm.type = "button";
+          rm.addEventListener("click", async () => {
+            try { await rpc("admin_set_image", { pw: state.pw, p_slot: it.slot, p_data: "" }); delete state.images[it.slot]; renderSlots(); toast(`${it.label} 圖片已移除`); }
+            catch (e) { imageError(e, it.slot); }
+          });
+          tools.appendChild(rm);
+        }
+        const msg = el("span", "slot-msg"); msg.id = "slotmsg-" + it.slot;
+        tools.appendChild(msg);
+        card.append(head, slot, tools);
+        grid.appendChild(card);
       }
-      const msg = el("span", "slot-msg"); msg.id = "slotmsg-" + it.slot;
-      tools.appendChild(msg);
-      card.append(head, slot, tools);
-      box.appendChild(card);
+      group.append(sub, grid);
+      box.appendChild(group);
     }
   }
 
@@ -696,86 +706,107 @@
     document.body.appendChild(lb);
   }
 
-  // ---------- submit ----------
-  function setStatus(text, kind, lock) {
-    const s = $("#status");
-    s.className = "status" + (kind ? " " + kind : "");
-    s.replaceChildren();
-    if (kind === "ok") s.appendChild(el("span", "done-mark"));
-    s.appendChild(document.createTextNode(text));
-    if (lock) s.dataset.locked = "1"; else delete s.dataset.locked;
+  // ---------- submit (each page sends on its own) ----------
+  const NOTE_DEFAULT = "完成按送出即可";
+  state.sent = { cover: false, layout: false };
+
+  function setNote(key, text, kind) {
+    const n = $("#note-" + key);
+    n.className = "pg-note" + (kind ? " " + kind : "");
+    n.textContent = text;
   }
+  function setSent(key, on) {
+    state.sent[key] = on;
+    const btn = $("#send-" + key);
+    btn.classList.toggle("sent", on);
+    btn.textContent = on ? "已送出" : "送出";
+    btn.setAttribute("aria-disabled", on ? "true" : "false");
+    if (on) setNote(key, key === "cover" ? "已送出。接著可從上方「02 內頁版式」繼續評分。" : "已送出，謝謝你的評分！", "ok");
+    else setNote(key, NOTE_DEFAULT);
+  }
+  function markDirty(key) { if (state.sent[key]) setSent(key, false); }
 
   function loadMine() { try { return JSON.parse(store.get("localStorage", MINE_KEY) || "null"); } catch { return null; } }
 
-  $("#submit").addEventListener("click", async () => {
-    if (state.submitting) return;
-    if (!CONFIGURED) { setStatus("網站尚未連接資料庫，請通知主辦人。", "err", true); return; }
+  async function submitSection(key) {
+    if (state.submitting || state.sent[key]) return;
+    const sec = SECTIONS.find(x => x.key === key);
+    if (!CONFIGURED) { setNote(key, "網站尚未連接資料庫，請通知主辦人。", "err"); return; }
     const title = $("#in-title").value.trim();
     if (!title) {
       $("#field-title").classList.add("missing");
-      setStatus("請填寫「職稱」。", "err", false);
-      toast("請先在第 1 頁填寫職稱");
-      if (state.view !== "cover") setPage("cover");
-      requestAnimationFrame(() => $(".info").scrollIntoView({ behavior: "smooth", block: "center" }));
+      setNote(key, "請先填寫「職稱」。", "err");
+      $(".info").scrollIntoView({ behavior: "smooth", block: "center" });
       setTimeout(() => $("#in-title").focus({ preventScroll: true }), 300);
       return;
     }
-    const missing = rows().filter(r => r.dataset.touched !== "1");
+    const missing = rows().filter(r => r.dataset.s === key && r.dataset.touched !== "1");
     if (missing.length) {
       missing.forEach(r => { r.classList.add("missing"); $(".txt", r).textContent = "請滑動評分"; });
-      setStatus(`還有 ${missing.length} 個項目尚未評分（已標示橘色）。`, "err", false);
-      const page = missing[0].dataset.s;
-      if (state.view !== page) { toast(`第 ${page === "cover" ? 1 : 2} 頁還有項目未評分`); setPage(page); }
-      requestAnimationFrame(() => missing[0].scrollIntoView({ behavior: "smooth", block: "center" }));
+      setNote(key, `還有 ${missing.length} 個項目尚未評分（已標示橘色）。`, "err");
+      missing[0].scrollIntoView({ behavior: "smooth", block: "center" });
       return;
     }
 
-    const scores = {};
-    for (const sec of SECTIONS) {
-      scores[sec.key] = {};
-      for (const it of sec.items) {
-        scores[sec.key][it.key] = {};
-        for (const c of sec.criteria) scores[sec.key][it.key][c.key] = Number($("input", rowOf(sec.key, it.key, c.key)).value);
-      }
+    const part = {};
+    for (const it of sec.items) {
+      part[it.key] = {};
+      for (const c of sec.criteria) part[it.key][c.key] = Number($("input", rowOf(key, it.key, c.key)).value);
     }
-    const mine = loadMine() || { id: uuid(), token: token() };
-    const payload = { id: mine.id, token: mine.token, title, scores };
+    const mine = loadMine() || { id: uuid(), token: token(), values: { scores: {} } };
+    const payload = { id: mine.id, token: mine.token, title, scores: { [key]: part } };
 
     state.submitting = true;
-    const btn = $("#submit");
+    const btn = $("#send-" + key);
     btn.disabled = true; btn.textContent = "送出中…";
     try {
       await rpc("submit_rating", { p: payload });
-      store.set("localStorage", MINE_KEY, JSON.stringify({ id: mine.id, token: mine.token, values: { title, scores } }));
-      setStatus("已送出，謝謝你的評分！如需修改，調整後再按一次即可更新。", "ok", true);
-      btn.textContent = "更新評分";
-      toast("評分已送出");
+      const values = mine.values || { scores: {} };
+      values.title = title;
+      values.scores = Object.assign({}, values.scores, { [key]: part });
+      store.set("localStorage", MINE_KEY, JSON.stringify({ id: mine.id, token: mine.token, values }));
+      btn.disabled = false;
+      setSent(key, true);
+      toast(`${sec.label}已送出`);
     } catch (err) {
       console.error(err);
-      setStatus(isMissingFn(err) ? "網站資料庫尚未更新，請通知主辦人。" : "送出失敗，請檢查網路後再試一次。", "err", true);
-      btn.textContent = loadMine() ? "更新評分" : "送出評分";
+      btn.disabled = false;
+      btn.textContent = "送出";
+      setNote(key, isMissingFn(err) || (err && err.code === "22023") ? "網站資料庫尚未更新，請通知主辦人。" : "送出失敗，請檢查網路後再試一次。", "err");
     } finally {
       state.submitting = false;
-      btn.disabled = false;
     }
-  });
+  }
+  $("#send-cover").addEventListener("click", () => submitSection("cover"));
+  $("#send-layout").addEventListener("click", () => submitSection("layout"));
 
   function prefillMine() {
     const mine = loadMine();
     if (!mine || !mine.values) return;
     const v = mine.values;
     if (v.title) $("#in-title").value = v.title;
-    for (const sec of SECTIONS) for (const it of sec.items) for (const c of sec.criteria) {
-      const n = Number(v.scores && v.scores[sec.key] && v.scores[sec.key][it.key] && v.scores[sec.key][it.key][c.key]);
-      if (n >= 1 && n <= MAX) setRow(rowOf(sec.key, it.key, c.key), n, true);
+    for (const sec of SECTIONS) {
+      let any = false;
+      for (const it of sec.items) for (const c of sec.criteria) {
+        const n = Number(v.scores && v.scores[sec.key] && v.scores[sec.key][it.key] && v.scores[sec.key][it.key][c.key]);
+        if (n >= 1 && n <= MAX) {
+          const row = rowOf(sec.key, it.key, c.key);
+          setRow(row, n, true);
+          $("input", row).dataset.last = String(n);
+          any = true;
+        }
+      }
+      if (any) setSent(sec.key, true);
     }
-    $("#submit").textContent = "更新評分";
-    setStatus("你之前已在這支手機送出過評分，已帶入上次的內容；修改後按「更新評分」即可。", "ok", true);
     updateProgress();
   }
 
-  $("#in-title").addEventListener("input", () => $("#field-title").classList.remove("missing"));
+  $("#in-title").addEventListener("input", () => {
+    $("#field-title").classList.remove("missing");
+    const saved = (loadMine() || {}).values;
+    const changed = !saved || (saved.title || "") !== $("#in-title").value.trim();
+    if (changed) { markDirty("cover"); markDirty("layout"); }
+  });
 
   // ---------- nav with dropdowns ----------
   function closeMenu() {
@@ -865,36 +896,26 @@
     $("#counter").hidden = !isForm;
     if (isForm) {
       const cover = view === "cover";
-      $(".info").hidden = !cover;
       $("#sec-cover").hidden = !cover;
-      $("#pager-next").hidden = !cover;
+      $("#pager-cover").hidden = !cover;
       $("#sec-layout").hidden = cover;
       $("#pager-prev").hidden = cover;
-      $("#submit-panel").hidden = cover;
+      $("#pager-layout").hidden = cover;
       $("#hero-title").textContent = cover ? "封面提案評分" : "內頁版式評分";
       $("#hero-lead").textContent = cover
-        ? "先填寫職稱，再為 A案、B案、C案 的每個項目滑動 1–3 分；完成後前往下一頁。"
-        : "為版式A、版式B 的每個項目滑動 1–3 分，完成後按「送出評分」即可。";
+        ? "填寫職稱，再為 A案、B案、C案 的每個項目滑動 1–3 分，完成後按「送出」。"
+        : "填寫職稱，再為版式A、版式B 的每個項目滑動 1–3 分，完成後按「送出」。";
       $("#step-tag").textContent = cover ? "Page 1 / 2" : "Page 2 / 2";
-      updatePagerNote();
+      updateProgress();
     }
     if (view === "results") renderGate(); else stopRefresh();
     markActive();
     window.scrollTo(0, 0);
   }
-  function updatePagerNote() {
-    const n = $("#pg-note");
-    if (!n) return;
-    const left = rows().filter(r => r.dataset.s === "cover" && r.dataset.touched !== "1").length;
-    n.replaceChildren();
-    if (left) { n.append(document.createTextNode("封面提案還有 "), el("b", null, String(left)), document.createTextNode(" 項未評分，也可以先到下一頁，送出前會再提醒。")); }
-    else n.textContent = "封面提案已全部評分，前往下一頁為內頁版式評分。";
-  }
   function routeFromHash() {
     const h = (location.hash || "").replace("#", "");
     show(h === "results" ? "results" : h === "layout" ? "layout" : "cover");
   }
-  $("#go-layout").addEventListener("click", () => setPage("layout"));
   $("#go-cover").addEventListener("click", () => setPage("cover"));
   window.addEventListener("hashchange", routeFromHash);
 
@@ -1004,7 +1025,7 @@
       const top = el("div", "submit-row");
       const t = el("div");
       const mono = el("div", "mono", `${sec.num} ${sec.en}`); mono.style.fontSize = "13px"; mono.style.marginBottom = "10px";
-      t.append(mono, el("h3", null, `${sec.label}・各項平均`));
+      t.append(mono, el("h3", null, sec.label));
       const legend = el("div", "legend");
       sec.items.forEach((it, idx) => { const s = el("span"); const i = el("i"); i.style.background = ITEM_COLORS[idx]; s.append(i, document.createTextNode(it.label)); legend.appendChild(s); });
       top.append(t, legend);
