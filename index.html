@@ -1264,14 +1264,6 @@
         fill.style.width = a == null ? "0%" : (a / MAX * 100) + "%";
         track.appendChild(fill);
         row.append(el("div", "rc-name", c.label), track, el("div", "rc-val", fmt(a)));
-        const dist = el("div", "rc-dist");
-        for (let lv = 1; lv <= MAX; lv++) {
-          const cnt = vals.filter(v => v === lv).length;
-          const sp = el("span");
-          sp.append(document.createTextNode(`${lv} ${LEVELS[lv]}`), el("b", null, `${cnt} 票`));
-          dist.appendChild(sp);
-        }
-        row.appendChild(dist);
         right.appendChild(row);
       }
       const scale = el("div", "rc-scale");
