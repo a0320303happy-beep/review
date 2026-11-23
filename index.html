@@ -348,6 +348,21 @@
   .pick.th-pick:hover{background:var(--white);border-color:var(--panel-line)}
   .tbl-group table{min-width:560px}
   .del-note{margin:14px 0 0;font-size:13px;color:var(--mute)}
+  .car-btn{position:absolute;top:50%;transform:translateY(-50%);width:44px;height:44px;border:0;background:rgba(22,22,22,.72);color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:2;padding:0}
+  .car-btn:hover,.car-btn:focus-visible{background:var(--orange);color:var(--ink);outline:none}
+  .car-btn svg{width:20px;height:20px}
+  .car-prev{left:10px}.car-next{right:10px}
+  .car-count{position:absolute;right:10px;bottom:10px;background:rgba(22,22,22,.72);color:#fff;font-family:var(--mono);font-size:12px;padding:4px 8px;letter-spacing:.1em;z-index:2;pointer-events:none}
+  .img-slot.car img{touch-action:pan-y;user-select:none;-webkit-user-drag:none}
+  .lightbox .car-btn{position:fixed;width:52px;height:52px}
+  .lightbox .car-prev{left:16px}.lightbox .car-next{right:16px}
+  .lightbox .car-count{position:fixed;right:16px;bottom:16px}
+  .multi-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+  .multi-tile .tile-label{font-family:var(--mono);font-size:12px;color:var(--mute);letter-spacing:.1em;margin-bottom:6px}
+  .multi-tile .slot-tools{margin-top:8px}
+  .multi-tile .btn.sm{padding:6px 10px;font-size:12px}
+  .multi-tile .slot-msg{font-size:12px}
+  .multi-note{font-size:13px;color:var(--mute);margin:12px 0 0}
   th.grp{border-bottom:3px solid var(--ink)}
   th.grp.o{border-bottom-color:var(--orange)}
   th.grp.g{border-bottom-color:#8A8A86}
@@ -464,8 +479,8 @@
     {
       key: "layout", num: "02", label: "內頁版式", en: "Page Layout",
       items: [
-        { key: "A", label: "版式A", en: "Layout A", slot: "LA" },
-        { key: "B", label: "版式B", en: "Layout B", slot: "LB" },
+        { key: "A", label: "版式A", en: "Layout A", slot: "LA", slots: ["LA", "LA2", "LA3", "LA4"] },
+        { key: "B", label: "版式B", en: "Layout B", slot: "LB", slots: ["LB", "LB2", "LB3", "LB4"] },
       ],
       criteria: [
         { key: "whitespace", label: "人文感",   en: "Human Touch" },
@@ -495,6 +510,8 @@
     del(area, k) { try { window[area].removeItem(k); } catch {} },
   };
   const allItems = () => SECTIONS.flatMap(s => s.items.map(it => ({ sec: s, it })));
+  const slotsOf = (it) => it.slots || [it.slot];
+  const srcsOf = (it) => slotsOf(it).map(k => state.images[k]).filter(Boolean);
 
   function toast(msg) {
     document.querySelectorAll(".toast").forEach(n => n.remove());
@@ -628,35 +645,112 @@
     return ph;
   }
 
-  function fillSlot(slot, label, src) {
+  const CHEV_L = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="square" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>';
+  const CHEV_R = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="square" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>';
+  if (!state.carIdx) state.carIdx = {};
+
+  // Shows one image, or a left/right carousel when there are several.
+  function fillSlot(slot, label, srcs, carKey) {
+    if (typeof srcs === "string") srcs = [srcs];
+    srcs = (srcs || []).filter(Boolean);
     slot.replaceChildren();
-    if (src) {
-      const img = document.createElement("img");
-      img.src = src; img.alt = `${label} 設計圖`;
-      img.addEventListener("click", () => openLightbox(img.src, img.alt));
-      slot.appendChild(img);
-    } else {
-      slot.appendChild(placeholder(`${label} 圖片準備中`));
+    slot.classList.toggle("car", srcs.length > 1);
+    if (!srcs.length) { slot.appendChild(placeholder(`${label} 圖片準備中`)); return; }
+    const key = carKey || label;
+    let idx = Math.min(state.carIdx[key] || 0, srcs.length - 1);
+    const img = document.createElement("img");
+    const count = el("span", "car-count");
+    const show = () => {
+      img.src = srcs[idx];
+      img.alt = srcs.length > 1 ? `${label} 設計圖 第 ${idx + 1} 張，共 ${srcs.length} 張` : `${label} 設計圖`;
+      count.textContent = `${idx + 1} / ${srcs.length}`;
+      state.carIdx[key] = idx;
+    };
+    const go = (d) => { idx = (idx + d + srcs.length) % srcs.length; show(); };
+    img.addEventListener("click", () => { if (!img.dataset.swiped) openLightbox(srcs, idx, label, (i) => { idx = i; show(); }); delete img.dataset.swiped; });
+    slot.appendChild(img);
+    if (srcs.length > 1) {
+      const prev = el("button", "car-btn car-prev"); prev.type = "button"; prev.innerHTML = CHEV_L; prev.setAttribute("aria-label", `${label} 上一張`);
+      const next = el("button", "car-btn car-next"); next.type = "button"; next.innerHTML = CHEV_R; next.setAttribute("aria-label", `${label} 下一張`);
+      prev.addEventListener("click", (e) => { e.stopPropagation(); go(-1); });
+      next.addEventListener("click", (e) => { e.stopPropagation(); go(1); });
+      slot.append(prev, next, count);
+      let x0 = null;
+      img.addEventListener("pointerdown", (e) => { x0 = e.clientX; });
+      img.addEventListener("pointerup", (e) => {
+        if (x0 == null) return;
+        const dx = e.clientX - x0; x0 = null;
+        if (Math.abs(dx) > 40) { img.dataset.swiped = "1"; go(dx < 0 ? 1 : -1); }
+      });
     }
+    show();
   }
 
   function renderSlots() {
     for (const { it } of allItems()) {
       const slot = $("#slot-" + it.slot);
-      if (slot) fillSlot(slot, it.label, state.images[it.slot]);
+      if (slot) fillSlot(slot, it.label, srcsOf(it), "front-" + it.slot);
     }
     renderAdminImages();
+    if (state.view === "results" && state.pw) renderResults();
+  }
+  let slotsQueued = false;
+  function queueRenderSlots() {
+    if (slotsQueued) return;
+    slotsQueued = true;
+    requestAnimationFrame(() => { slotsQueued = false; renderSlots(); });
   }
 
+  // Loads the list of uploaded images first, then each image on its own (cover first),
+  // so the page shows something quickly even when there are many pictures.
   async function loadImages() {
     if (!CONFIGURED) return;
-    try {
-      const list = await rpc("get_images");
-      const next = {};
-      (list || []).forEach(r => { if (r && typeof r.slot === "string") next[r.slot] = r.data_url; });
-      state.images = next;
-      renderSlots();
-    } catch (e) { console.warn("images", e); }
+    let list = null;
+    try { list = await rpc("get_image_list"); }
+    catch (e) {
+      if (!isMissingFn(e)) { console.warn("image list", e); return; }
+      try {   // database not on v4 yet: fall back to loading everything at once
+        const all = await rpc("get_images");
+        (all || []).forEach(r => { if (r && typeof r.slot === "string") state.images[r.slot] = r.data_url; });
+        queueRenderSlots();
+      } catch (e2) { console.warn("images", e2); }
+      return;
+    }
+    const order = allItems().flatMap(({ it }) => slotsOf(it));
+    const have = new Set((list || []).map(r => r.slot));
+    for (const k of Object.keys(state.images)) if (!have.has(k)) delete state.images[k];
+    const wanted = order.filter(k => have.has(k));
+    let i = 0;
+    const worker = async () => {
+      while (i < wanted.length) {
+        const k = wanted[i++];
+        try { const url = await rpc("get_image", { p_slot: k }); if (url) { state.images[k] = url; queueRenderSlots(); } }
+        catch (e) { console.warn("image", k, e); }
+      }
+    };
+    await Promise.all([worker(), worker(), worker()]);
+    queueRenderSlots();
+  }
+
+  function slotTools(slotKey, label, compact) {
+    const tools = el("div", "slot-tools");
+    const has = !!state.images[slotKey];
+    const up = el("button", "btn sm", has ? (compact ? "更換" : "更換圖片") : (compact ? "上傳" : "上傳圖片"));
+    up.type = "button";
+    up.addEventListener("click", () => pickFile(slotKey));
+    tools.appendChild(up);
+    if (has) {
+      const rm = el("button", "btn ghost sm", "移除");
+      rm.type = "button";
+      rm.addEventListener("click", async () => {
+        try { await rpc("admin_set_image", { pw: state.pw, p_slot: slotKey, p_data: "" }); delete state.images[slotKey]; renderSlots(); toast(`${label} 圖片已移除`); }
+        catch (e) { imageError(e, slotKey); }
+      });
+      tools.appendChild(rm);
+    }
+    const msg = el("span", "slot-msg"); msg.id = "slotmsg-" + slotKey;
+    tools.appendChild(msg);
+    return tools;
   }
 
   function renderAdminImages() {
@@ -680,7 +774,8 @@
       for (const opt of sec.items) {
         const o = document.createElement("option");
         o.value = opt.key;
-        o.textContent = `${opt.label}（${state.images[opt.slot] ? "已上傳" : "未上傳"}）`;
+        const n = slotsOf(opt).filter(k => state.images[k]).length;
+        o.textContent = opt.slots ? `${opt.label}（${n} / ${opt.slots.length} 張）` : `${opt.label}（${n ? "已上傳" : "未上傳"}）`;
         if (opt.key === pickKey) o.selected = true;
         sel.appendChild(o);
       }
@@ -696,25 +791,24 @@
       const head = el("div", "card-head");
       const h2 = el("h2"); h2.appendChild(document.createTextNode(it.label));
       head.append(h2, el("span", "sec-tag", it.en));
-      const slot = el("div", "img-slot");
-      fillSlot(slot, it.label, state.images[it.slot]);
-      const tools = el("div", "slot-tools");
-      const up = el("button", "btn sm", state.images[it.slot] ? "更換圖片" : "上傳圖片");
-      up.type = "button";
-      up.addEventListener("click", () => pickFile(it.slot));
-      tools.appendChild(up);
-      if (state.images[it.slot]) {
-        const rm = el("button", "btn ghost sm", "移除");
-        rm.type = "button";
-        rm.addEventListener("click", async () => {
-          try { await rpc("admin_set_image", { pw: state.pw, p_slot: it.slot, p_data: "" }); delete state.images[it.slot]; renderSlots(); toast(`${it.label} 圖片已移除`); }
-          catch (e) { imageError(e, it.slot); }
+      card.appendChild(head);
+
+      if (it.slots) {
+        const grid = el("div", "multi-grid");
+        it.slots.forEach((k, n) => {
+          const tile = el("div", "multi-tile");
+          tile.appendChild(el("div", "tile-label", `第 ${n + 1} 張`));
+          const slot = el("div", "img-slot");
+          fillSlot(slot, `${it.label} 第 ${n + 1} 張`, state.images[k] ? [state.images[k]] : [], "admin-" + k);
+          tile.append(slot, slotTools(k, `${it.label} 第 ${n + 1} 張`, true));
+          grid.appendChild(tile);
         });
-        tools.appendChild(rm);
+        card.append(grid, el("p", "multi-note", "前台會依第 1 → 4 張的順序顯示，空的位置會自動略過。"));
+      } else {
+        const slot = el("div", "img-slot");
+        fillSlot(slot, it.label, state.images[it.slot] ? [state.images[it.slot]] : [], "admin-" + it.slot);
+        card.append(slot, slotTools(it.slot, it.label, false));
       }
-      const msg = el("span", "slot-msg"); msg.id = "slotmsg-" + it.slot;
-      tools.appendChild(msg);
-      card.append(head, slot, tools);
 
       group.append(sub, card);
       box.appendChild(group);
@@ -726,7 +820,7 @@
     if (isWrongPw(err)) return handleAdminError(err);
     const m = $("#slotmsg-" + slotKey);
     const needsSql = err && (err.code === "23514" || /check constraint/i.test(err.message || ""));
-    if (m) m.textContent = needsSql ? "資料庫尚未更新，請先執行 update_v2.sql" : "失敗：" + (err.message || "請再試一次");
+    if (m) m.textContent = needsSql ? "資料庫尚未更新，請先執行 update_v4.sql" : "失敗：" + (err.message || "請再試一次");
   }
 
   function pickFile(slotKey) {
@@ -774,16 +868,39 @@
   });
 
   // ---------- lightbox ----------
-  function openLightbox(src, alt) {
+  function openLightbox(srcs, start, label, onChange) {
+    if (typeof srcs === "string") srcs = [srcs];
+    let idx = start || 0;
     const lb = el("div", "lightbox");
-    const img = document.createElement("img"); img.src = src; img.alt = alt;
+    lb.setAttribute("role", "dialog"); lb.setAttribute("aria-label", `${label} 圖片`);
+    const img = document.createElement("img");
     const x = el("button", "x", "×"); x.type = "button"; x.setAttribute("aria-label", "關閉");
+    const count = el("span", "car-count");
+    const show = () => { img.src = srcs[idx]; img.alt = `${label} 設計圖`; count.textContent = `${idx + 1} / ${srcs.length}`; if (onChange) onChange(idx); };
+    const go = (d) => { idx = (idx + d + srcs.length) % srcs.length; show(); };
     lb.append(img, x);
+    if (srcs.length > 1) {
+      const prev = el("button", "car-btn car-prev"); prev.type = "button"; prev.innerHTML = CHEV_L; prev.setAttribute("aria-label", "上一張");
+      const next = el("button", "car-btn car-next"); next.type = "button"; next.innerHTML = CHEV_R; next.setAttribute("aria-label", "下一張");
+      prev.addEventListener("click", (e) => { e.stopPropagation(); go(-1); });
+      next.addEventListener("click", (e) => { e.stopPropagation(); go(1); });
+      img.addEventListener("click", (e) => e.stopPropagation());
+      let x0 = null;
+      img.addEventListener("pointerdown", (e) => { x0 = e.clientX; });
+      img.addEventListener("pointerup", (e) => { if (x0 == null) return; const dx = e.clientX - x0; x0 = null; if (Math.abs(dx) > 40) go(dx < 0 ? 1 : -1); });
+      lb.append(prev, next, count);
+    }
     const close = () => { lb.remove(); document.removeEventListener("keydown", onKey); };
-    const onKey = (ev) => { if (ev.key === "Escape") close(); };
+    const onKey = (ev) => {
+      if (ev.key === "Escape") close();
+      else if (srcs.length > 1 && ev.key === "ArrowLeft") go(-1);
+      else if (srcs.length > 1 && ev.key === "ArrowRight") go(1);
+    };
     lb.addEventListener("click", close);
     document.addEventListener("keydown", onKey);
     document.body.appendChild(lb);
+    show();
+    x.focus({ preventScroll: true });
   }
 
   // ---------- submit (each page sends on its own) ----------
@@ -1129,14 +1246,8 @@
       const grid = el("div", "res-grid");
       // left: image + total
       const left = el("div");
-      const fig = el("div", "res-img");
-      const src = state.images[it.slot];
-      if (src) {
-        const img = document.createElement("img");
-        img.src = src; img.alt = `${it.label} 設計圖`;
-        img.addEventListener("click", () => openLightbox(img.src, img.alt));
-        fig.appendChild(img);
-      } else fig.appendChild(el("span", null, `${it.label} 尚未上傳圖片`));
+      const fig = el("div", "img-slot");
+      fillSlot(fig, it.label, srcsOf(it), "res-" + it.slot);
       const answered = list.filter(r => r.scores && r.scores[sec.key] && r.scores[sec.key][it.key]).length;
       const tot = el("div", "res-total");
       tot.append(el("span", "lbl", `${it.label} 總平均`), el("b", null, fmt(itemAvg(list, sec, it))), el("span", "of", "/ 3"), el("span", "n", `${answered} 份評分`));
