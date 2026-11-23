@@ -323,7 +323,10 @@
   .tbl-group + .tbl-group{margin-top:clamp(24px,3vw,40px)}
   .tbl-group .img-sub{margin-bottom:12px}
   .tbl-group .img-sub .count{margin-left:auto;font-family:var(--mono);font-size:13px;color:var(--mute);letter-spacing:.08em}
-  .tbl-group .img-sub .pick-box{margin-left:0}
+  .th-pick-box{display:inline-block;position:relative}
+  .th-pick-box::after{content:"▾";position:absolute;right:10px;top:50%;transform:translateY(-50%);color:var(--orange);pointer-events:none;font-size:13px}
+  .pick.th-pick{background:transparent;color:var(--ink);border:1px solid transparent;font-size:15px;font-weight:700;padding:6px 30px 6px 12px;min-width:0;letter-spacing:.06em;text-align:center}
+  .pick.th-pick:hover{background:var(--white);border-color:var(--panel-line)}
   .tbl-group table{min-width:560px}
   .del-note{margin:14px 0 0;font-size:13px;color:var(--mute)}
   th.grp{border-bottom:3px solid var(--ink)}
@@ -1167,12 +1170,11 @@
       const group = el("div", "tbl-group");
       const sub = el("div", "img-sub");
       const selId = "tblpick-" + sec.key;
-      const h4 = el("h4");
-      const lab = el("label", null, sec.label); lab.htmlFor = selId; lab.style.cursor = "pointer";
-      h4.appendChild(lab);
-      const pbox = el("div", "pick-box");
+      const h4 = el("h4", null, sec.label);
+      const pbox = el("div", "th-pick-box");
       const sel = document.createElement("select");
-      sel.className = "pick light"; sel.id = selId;
+      sel.className = "pick th-pick"; sel.id = selId;
+      sel.setAttribute("aria-label", `${sec.label}：選擇要查看的案`);
       for (const opt of sec.items) {
         const o = document.createElement("option");
         o.value = opt.key; o.textContent = opt.label;
@@ -1185,14 +1187,14 @@
         const again = document.getElementById(selId); if (again) again.focus({ preventScroll: true });
       });
       pbox.appendChild(sel);
-      sub.append(el("span", "sec-num", sec.num), h4, el("span", "count", `${rowsFor.length} 份`), pbox);
+      sub.append(el("span", "sec-num", sec.num), h4, el("span", "count", `${rowsFor.length} 份`));
 
       const wrapT = el("div", "table-wrap");
       const table = el("table");
       const thead = el("thead"), tbody = el("tbody");
       const r1 = el("tr"), r2 = el("tr");
       const thT = el("th", "name", "職稱"); thT.rowSpan = 2; r1.appendChild(thT);
-      const thG = el("th", "grp" + (idx === 0 ? " o" : idx === 2 ? " g" : ""), it.label); thG.colSpan = sec.criteria.length; r1.appendChild(thG);
+      const thG = el("th", "grp" + (idx === 0 ? " o" : idx === 2 ? " g" : "")); thG.colSpan = sec.criteria.length; thG.appendChild(pbox); r1.appendChild(thG);
       for (const c of sec.criteria) r2.appendChild(el("th", null, c.label));
       const thTime = el("th", null, "送出時間"); thTime.rowSpan = 2;
       const thDel = el("th", null, "管理"); thDel.rowSpan = 2;
