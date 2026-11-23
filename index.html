@@ -291,6 +291,18 @@
   .img-sub .sec-num{font-family:var(--mono);font-size:16px;color:var(--orange-ink);letter-spacing:.1em}
   .img-sub h4{margin:0;font-weight:900;font-size:clamp(20px,2vw,26px);letter-spacing:.06em}
   .img-sub .en{margin-left:auto;font-family:var(--mono);font-size:12px;color:var(--mute);letter-spacing:.14em}
+  .res-panel{background:var(--panel);border:1px solid var(--panel-line);color:var(--ink);padding:clamp(22px,3.5vw,56px)}
+  .res-panel + .res-panel{margin-top:clamp(16px,2.5vw,32px)}
+  .res-panel h3{margin:0;font-weight:900;font-size:clamp(26px,3.4vw,44px);letter-spacing:.04em}
+  .res-panel .mono{color:var(--mute)}
+  .res-panel .rule{height:1px;background:var(--panel-line);margin:22px 0 26px}
+  .res-panel .pick-wrap label{color:var(--mute)}
+  .res-panel .res-total .lbl,.res-panel .res-total .of,.res-panel .res-total .n{color:var(--mute)}
+  .res-panel .res-total b{color:var(--orange-ink)}
+  .res-panel .rc-track{background:#DCDCD8}
+  .res-panel .rc-dist{color:#555552}
+  .res-panel .rc-dist i{background:#8A8A86}
+  .res-panel .rc-scale{color:var(--mute)}
   .res-head{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap}
   .pick-wrap{position:relative;display:inline-flex;align-items:center;gap:12px}
   .pick-wrap label{font-family:var(--mono);font-size:13px;color:#A9A9A5;letter-spacing:.12em}
@@ -1083,7 +1095,7 @@
       const pickKey = state.pick[sec.key] && sec.items.some(i => i.key === state.pick[sec.key]) ? state.pick[sec.key] : sec.items[0].key;
       const it = sec.items.find(i => i.key === pickKey);
 
-      const panel = el("section", "dark");
+      const panel = el("section", "res-panel");
       if (sec === SECTIONS[0]) panel.style.marginTop = "0";
       const head = el("div", "res-head");
       const t = el("div");
@@ -1094,7 +1106,7 @@
       const lab = el("label", null, "查看"); lab.htmlFor = selId;
       const box = el("div", "pick-box");
       const sel = document.createElement("select");
-      sel.className = "pick"; sel.id = selId;
+      sel.className = "pick light"; sel.id = selId;
       for (const opt of sec.items) {
         const o = document.createElement("option");
         o.value = opt.key; o.textContent = opt.label;
