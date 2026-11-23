@@ -278,7 +278,15 @@
   .pager .btn.orange{min-width:180px}
   .pager .btn.orange.sent{background:#F4CDB1;border-color:#F4CDB1;color:#7A4321;cursor:default;filter:none}
   .step-tag{display:inline-block;font-family:var(--mono);font-size:13px;letter-spacing:.14em;color:var(--mute);margin-top:10px}
-  .img-group + .img-group{margin-top:clamp(20px,3vw,36px)}
+  #admin-imgs{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,360px),1fr));gap:clamp(16px,2.5vw,32px);align-items:start}
+  .img-sub{flex-wrap:wrap;align-items:center}
+  .img-sub .pick-box{margin-left:auto}
+  .pick.light{background:var(--white);color:var(--ink);border-color:var(--panel-line);font-size:16px;padding:10px 42px 10px 14px;min-width:170px}
+  .img-group .card .slot-tools{margin-top:14px}
+  .img-group .card{padding:clamp(14px,2vw,24px)}
+  .img-group .card-head{margin-bottom:12px}
+  .img-group .card-head h2{font-size:24px}
+  .img-group .sec-tag{font-family:var(--mono);font-size:12px;color:var(--mute);letter-spacing:.1em}
   .img-sub{display:flex;align-items:baseline;gap:14px;border-bottom:2px solid var(--ink);padding-bottom:10px;margin:0 0 16px}
   .img-sub .sec-num{font-family:var(--mono);font-size:16px;color:var(--orange-ink);letter-spacing:.1em}
   .img-sub h4{margin:0;font-weight:900;font-size:clamp(20px,2vw,26px);letter-spacing:.06em}
@@ -631,39 +639,61 @@
   function renderAdminImages() {
     const box = $("#admin-imgs");
     if (!box) return;
+    if (!state.imgPick) state.imgPick = {};
     box.replaceChildren();
     for (const sec of SECTIONS) {
+      const pickKey = sec.items.some(i => i.key === state.imgPick[sec.key]) ? state.imgPick[sec.key] : sec.items[0].key;
+      const it = sec.items.find(i => i.key === pickKey);
       const group = el("div", "img-group");
+
       const sub = el("div", "img-sub");
-      sub.append(el("span", "sec-num", sec.num), el("h4", null, sec.label), el("span", "en", sec.en));
-      const grid = el("div", "admin-imgs");
-      for (const it of sec.items) {
-        const card = el("div", "card");
-        const head = el("div", "card-head");
-        const h2 = el("h2"); h2.appendChild(document.createTextNode(it.label));
-        head.append(h2, el("span", "sec-tag", it.en));
-        const slot = el("div", "img-slot");
-        fillSlot(slot, it.label, state.images[it.slot]);
-        const tools = el("div", "slot-tools");
-        const up = el("button", "btn sm", state.images[it.slot] ? "更換圖片" : "上傳圖片");
-        up.type = "button";
-        up.addEventListener("click", () => pickFile(it.slot));
-        tools.appendChild(up);
-        if (state.images[it.slot]) {
-          const rm = el("button", "btn ghost sm", "移除");
-          rm.type = "button";
-          rm.addEventListener("click", async () => {
-            try { await rpc("admin_set_image", { pw: state.pw, p_slot: it.slot, p_data: "" }); delete state.images[it.slot]; renderSlots(); toast(`${it.label} 圖片已移除`); }
-            catch (e) { imageError(e, it.slot); }
-          });
-          tools.appendChild(rm);
-        }
-        const msg = el("span", "slot-msg"); msg.id = "slotmsg-" + it.slot;
-        tools.appendChild(msg);
-        card.append(head, slot, tools);
-        grid.appendChild(card);
+      const selId = "imgpick-" + sec.key;
+      const h4 = el("h4");
+      const lab = el("label", null, sec.label); lab.htmlFor = selId; lab.style.cursor = "pointer";
+      h4.appendChild(lab);
+      const pbox = el("div", "pick-box");
+      const sel = document.createElement("select");
+      sel.className = "pick light"; sel.id = selId;
+      for (const opt of sec.items) {
+        const o = document.createElement("option");
+        o.value = opt.key;
+        o.textContent = `${opt.label}（${state.images[opt.slot] ? "已上傳" : "未上傳"}）`;
+        if (opt.key === pickKey) o.selected = true;
+        sel.appendChild(o);
       }
-      group.append(sub, grid);
+      sel.addEventListener("change", () => {
+        state.imgPick[sec.key] = sel.value;
+        renderAdminImages();
+        const again = document.getElementById(selId); if (again) again.focus({ preventScroll: true });
+      });
+      pbox.appendChild(sel);
+      sub.append(el("span", "sec-num", sec.num), h4, pbox);
+
+      const card = el("div", "card");
+      const head = el("div", "card-head");
+      const h2 = el("h2"); h2.appendChild(document.createTextNode(it.label));
+      head.append(h2, el("span", "sec-tag", it.en));
+      const slot = el("div", "img-slot");
+      fillSlot(slot, it.label, state.images[it.slot]);
+      const tools = el("div", "slot-tools");
+      const up = el("button", "btn sm", state.images[it.slot] ? "更換圖片" : "上傳圖片");
+      up.type = "button";
+      up.addEventListener("click", () => pickFile(it.slot));
+      tools.appendChild(up);
+      if (state.images[it.slot]) {
+        const rm = el("button", "btn ghost sm", "移除");
+        rm.type = "button";
+        rm.addEventListener("click", async () => {
+          try { await rpc("admin_set_image", { pw: state.pw, p_slot: it.slot, p_data: "" }); delete state.images[it.slot]; renderSlots(); toast(`${it.label} 圖片已移除`); }
+          catch (e) { imageError(e, it.slot); }
+        });
+        tools.appendChild(rm);
+      }
+      const msg = el("span", "slot-msg"); msg.id = "slotmsg-" + it.slot;
+      tools.appendChild(msg);
+      card.append(head, slot, tools);
+
+      group.append(sub, card);
       box.appendChild(group);
     }
   }
