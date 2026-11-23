@@ -328,6 +328,7 @@
   .rc-val{font-family:var(--mono);font-size:20px;text-align:right}
   .rc-dist{grid-column:2 / 4;display:flex;gap:22px;flex-wrap:wrap;font-size:13px;color:#BDBDB9;letter-spacing:.04em}
   .rc-dist span{display:inline-flex;align-items:center;gap:8px}
+  .rc-dist b{font-weight:700;color:var(--ink)}
   .rc-dist i{display:inline-block;height:8px;background:#6B6B68}
   .rc-scale{display:grid;grid-template-columns:116px minmax(0,1fr) 60px;gap:0 18px;font-family:var(--mono);font-size:11px;color:#8A8A86}
   .rc-scale div{display:flex;justify-content:space-between}
@@ -1147,12 +1148,10 @@
         track.appendChild(fill);
         row.append(el("div", "rc-name", c.label), track, el("div", "rc-val", fmt(a)));
         const dist = el("div", "rc-dist");
-        const n = vals.length || 1;
         for (let lv = 1; lv <= MAX; lv++) {
           const cnt = vals.filter(v => v === lv).length;
           const sp = el("span");
-          const bar = el("i"); bar.style.width = Math.round(cnt / n * 60) + "px";
-          sp.append(document.createTextNode(`${lv} ${LEVELS[lv]}`), bar, document.createTextNode(`${cnt} 票`));
+          sp.append(document.createTextNode(`${lv} ${LEVELS[lv]}`), el("b", null, `${cnt} 票`));
           dist.appendChild(sp);
         }
         row.appendChild(dist);
