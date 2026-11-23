@@ -283,6 +283,35 @@
   .img-sub .sec-num{font-family:var(--mono);font-size:16px;color:var(--orange-ink);letter-spacing:.1em}
   .img-sub h4{margin:0;font-weight:900;font-size:clamp(20px,2vw,26px);letter-spacing:.06em}
   .img-sub .en{margin-left:auto;font-family:var(--mono);font-size:12px;color:var(--mute);letter-spacing:.14em}
+  .res-head{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap}
+  .pick-wrap{position:relative;display:inline-flex;align-items:center;gap:12px}
+  .pick-wrap label{font-family:var(--mono);font-size:13px;color:#A9A9A5;letter-spacing:.12em}
+  .pick-box{position:relative}
+  .pick-box::after{content:"▾";position:absolute;right:14px;top:50%;transform:translateY(-50%);color:var(--orange);pointer-events:none;font-size:14px}
+  .pick{appearance:none;-webkit-appearance:none;background:#222;color:var(--white);border:1px solid #5A5A57;border-radius:0;padding:12px 44px 12px 16px;font-size:17px;font-weight:700;letter-spacing:.08em;cursor:pointer;min-width:150px}
+  .pick:focus-visible{outline:2px solid var(--orange);outline-offset:2px}
+  .res-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,2fr);gap:clamp(20px,3vw,48px);align-items:start}
+  @media (max-width:820px){.res-grid{grid-template-columns:1fr}}
+  .res-img{background:#000;aspect-ratio:4 / 3;border:1px solid #3A3A3A;display:flex;align-items:center;justify-content:center;overflow:hidden}
+  .res-img img{width:100%;height:100%;object-fit:contain;display:block;cursor:zoom-in}
+  .res-img span{color:#8A8A86;font-family:var(--mono);font-size:13px;letter-spacing:.1em}
+  .res-total{margin-top:18px;display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+  .res-total .lbl{font-size:14px;color:#A9A9A5;letter-spacing:.08em}
+  .res-total b{font-size:48px;font-weight:900;color:var(--orange);line-height:1}
+  .res-total .of{color:#A9A9A5;font-size:16px}
+  .res-total .n{margin-left:auto;font-family:var(--mono);font-size:13px;color:#A9A9A5}
+  .res-crit{display:grid;gap:26px}
+  .rc-row{display:grid;grid-template-columns:116px minmax(0,1fr) 60px;gap:10px 18px;align-items:center}
+  .rc-name{font-weight:900;font-size:22px;letter-spacing:.06em}
+  .rc-track{height:24px;background:#2A2A2A;position:relative}
+  .rc-fill{position:absolute;inset:0 auto 0 0;background:var(--orange);transition:width .4s ease}
+  .rc-val{font-family:var(--mono);font-size:20px;text-align:right}
+  .rc-dist{grid-column:2 / 4;display:flex;gap:22px;flex-wrap:wrap;font-size:13px;color:#BDBDB9;letter-spacing:.04em}
+  .rc-dist span{display:inline-flex;align-items:center;gap:8px}
+  .rc-dist i{display:inline-block;height:8px;background:#6B6B68}
+  .rc-scale{display:grid;grid-template-columns:116px minmax(0,1fr) 60px;gap:0 18px;font-family:var(--mono);font-size:11px;color:#8A8A86}
+  .rc-scale div{display:flex;justify-content:space-between}
+  @media (max-width:600px){.rc-row,.rc-scale{grid-template-columns:76px minmax(0,1fr) 48px;gap:8px 12px}.rc-name{font-size:18px}.rc-dist{grid-column:1 / -1}}
   th.grp{border-bottom:3px solid var(--ink)}
   th.grp.o{border-bottom-color:var(--orange)}
   th.grp.g{border-bottom-color:#8A8A86}
@@ -1016,45 +1045,81 @@
     const wrap = $("#compare-wrap");
     wrap.replaceChildren();
     for (const sec of SECTIONS) {
+      if (!state.pick) state.pick = {};
+      const pickKey = state.pick[sec.key] && sec.items.some(i => i.key === state.pick[sec.key]) ? state.pick[sec.key] : sec.items[0].key;
+      const it = sec.items.find(i => i.key === pickKey);
+
       const panel = el("section", "dark");
       if (sec === SECTIONS[0]) panel.style.marginTop = "0";
-      const top = el("div", "submit-row");
+      const head = el("div", "res-head");
       const t = el("div");
       const mono = el("div", "mono", `${sec.num} ${sec.en}`); mono.style.fontSize = "13px"; mono.style.marginBottom = "10px";
       t.append(mono, el("h3", null, sec.label));
-      const legend = el("div", "legend");
-      sec.items.forEach((it, idx) => { const s = el("span"); const i = el("i"); i.style.background = ITEM_COLORS[idx]; s.append(i, document.createTextNode(it.label)); legend.appendChild(s); });
-      top.append(t, legend);
-      panel.append(top, el("div", "rule"));
-      const cmp = el("div", "compare");
-      for (const c of sec.criteria) {
-        const row = el("div", "cmp-row");
-        row.appendChild(el("div", "cmp-name", c.label));
-        const bars = el("div", "bars");
-        sec.items.forEach((it, idx) => {
-          const vals = list.map(r => score(r, sec.key, it.key, c.key));
-          const a = avg(vals);
-          const bar = el("div", "bar " + ["a", "b", "c"][idx]);
-          bar.appendChild(el("span", "who", it.label));
-          const tr = el("div", "track");
-          const f = el("div", "fill");
-          f.style.width = a == null ? "0%" : (a / MAX * 100) + "%";
-          tr.appendChild(f);
-          bar.append(tr, el("span", "val", fmt(a)));
-          bars.appendChild(bar);
-          const counts = [1, 2, 3].map(s => vals.filter(v => v === s).length);
-          bars.appendChild(el("div", "dist", counts.map((n, i) => `${LEVELS[i + 1]}×${n}`).join("　")));
-        });
-        row.appendChild(bars);
-        cmp.appendChild(row);
+      const pw = el("div", "pick-wrap");
+      const selId = "pick-" + sec.key;
+      const lab = el("label", null, "查看"); lab.htmlFor = selId;
+      const box = el("div", "pick-box");
+      const sel = document.createElement("select");
+      sel.className = "pick"; sel.id = selId;
+      for (const opt of sec.items) {
+        const o = document.createElement("option");
+        o.value = opt.key; o.textContent = opt.label;
+        if (opt.key === pickKey) o.selected = true;
+        sel.appendChild(o);
       }
-      const scale = el("div", "scale mono");
-      scale.append(el("span", "sp1"), el("span"));
+      sel.addEventListener("change", () => { state.pick[sec.key] = sel.value; renderResults(); const again = document.getElementById(selId); if (again) again.focus({ preventScroll: true }); });
+      box.appendChild(sel);
+      pw.append(lab, box);
+      head.append(t, pw);
+      panel.append(head, el("div", "rule"));
+
+      const grid = el("div", "res-grid");
+      // left: image + total
+      const left = el("div");
+      const fig = el("div", "res-img");
+      const src = state.images[it.slot];
+      if (src) {
+        const img = document.createElement("img");
+        img.src = src; img.alt = `${it.label} 設計圖`;
+        img.addEventListener("click", () => openLightbox(img.src, img.alt));
+        fig.appendChild(img);
+      } else fig.appendChild(el("span", null, `${it.label} 尚未上傳圖片`));
+      const answered = list.filter(r => r.scores && r.scores[sec.key] && r.scores[sec.key][it.key]).length;
+      const tot = el("div", "res-total");
+      tot.append(el("span", "lbl", `${it.label} 總平均`), el("b", null, fmt(itemAvg(list, sec, it))), el("span", "of", "/ 3"), el("span", "n", `${answered} 份評分`));
+      left.append(fig, tot);
+
+      // right: criteria
+      const right = el("div", "res-crit");
+      for (const c of sec.criteria) {
+        const vals = list.map(r => score(r, sec.key, it.key, c.key)).filter(v => v != null);
+        const a = avg(vals);
+        const row = el("div", "rc-row");
+        const track = el("div", "rc-track");
+        const fill = el("div", "rc-fill");
+        fill.style.width = a == null ? "0%" : (a / MAX * 100) + "%";
+        track.appendChild(fill);
+        row.append(el("div", "rc-name", c.label), track, el("div", "rc-val", fmt(a)));
+        const dist = el("div", "rc-dist");
+        const n = vals.length || 1;
+        for (let lv = 1; lv <= MAX; lv++) {
+          const cnt = vals.filter(v => v === lv).length;
+          const sp = el("span");
+          const bar = el("i"); bar.style.width = Math.round(cnt / n * 60) + "px";
+          sp.append(document.createTextNode(`${lv} ${LEVELS[lv]}`), bar, document.createTextNode(`${cnt} 票`));
+          dist.appendChild(sp);
+        }
+        row.appendChild(dist);
+        right.appendChild(row);
+      }
+      const scale = el("div", "rc-scale");
       const sd = el("div");
       for (let i = 0; i <= MAX; i++) sd.appendChild(el("span", null, String(i)));
-      scale.append(sd, el("span"));
-      cmp.appendChild(scale);
-      panel.appendChild(cmp);
+      scale.append(el("span"), sd, el("span"));
+      right.appendChild(scale);
+
+      grid.append(left, right);
+      panel.appendChild(grid);
       wrap.appendChild(panel);
     }
 
