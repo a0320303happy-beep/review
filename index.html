@@ -321,8 +321,6 @@
       <button class="btn orange" id="send-cover" type="button">送出</button>
     </div>
 
-    <div class="prev-row" id="pager-prev"><button class="btn ghost" id="go-cover" type="button">← 上一頁：01 封面提案</button></div>
-
     <div class="pager" id="pager-layout">
       <div class="pg-note" id="note-layout" role="status" aria-live="polite">完成按送出即可</div>
       <button class="btn orange" id="send-layout" type="button">送出</button>
@@ -721,7 +719,7 @@
     btn.classList.toggle("sent", on);
     btn.textContent = on ? "已送出" : "送出";
     btn.setAttribute("aria-disabled", on ? "true" : "false");
-    if (on) setNote(key, key === "cover" ? "已送出。接著可從上方「02 內頁版式」繼續評分。" : "已送出，謝謝你的評分！", "ok");
+    if (on) setNote(key, key === "cover" ? "已送出。" : "已送出，謝謝你的評分！", "ok");
     else setNote(key, NOTE_DEFAULT);
   }
   function markDirty(key) { if (state.sent[key]) setSent(key, false); }
@@ -899,7 +897,6 @@
       $("#sec-cover").hidden = !cover;
       $("#pager-cover").hidden = !cover;
       $("#sec-layout").hidden = cover;
-      $("#pager-prev").hidden = cover;
       $("#pager-layout").hidden = cover;
       $("#hero-title").textContent = cover ? "封面提案評分" : "內頁版式評分";
       $("#hero-lead").textContent = cover
@@ -916,7 +913,6 @@
     const h = (location.hash || "").replace("#", "");
     show(h === "results" ? "results" : h === "layout" ? "layout" : "cover");
   }
-  $("#go-cover").addEventListener("click", () => setPage("cover"));
   window.addEventListener("hashchange", routeFromHash);
 
   // ---------- admin ----------
