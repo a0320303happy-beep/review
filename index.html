@@ -497,13 +497,13 @@
         { key: "B", label: "版式B", en: "Layout B", slot: "LB", slots: ["LB", "LB2", "LB3", "LB4"] },
       ],
       criteria: [
-        { key: "whitespace", label: "人文感",   en: "Human Touch" },
+        { key: "whitespace", label: "版式應用", en: "Application" },
         { key: "rhythm",     label: "閱讀節奏", en: "Reading Rhythm" },
         { key: "hierarchy",  label: "圖文層級", en: "Hierarchy" },
       ],
     },
   ];
-  const LEVELS = { 1: "普通好", 2: "剛剛好", 3: "超級好" };
+  const LEVELS = { 1: "普通好", 2: "還不錯", 3: "超級好" };
   const MAX = 3;
   const TOTAL = SECTIONS.reduce((n, s) => n + s.items.length * s.criteria.length, 0);
   const ITEM_COLORS = ["var(--orange)", "#E6E6E4", "#8A8A86"];
