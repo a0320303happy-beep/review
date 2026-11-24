@@ -482,7 +482,7 @@
     {
       key: "cover", num: "01", label: "封面提案", en: "Cover Proposal",
       items: [
-        { key: "A", label: "A案", en: "Proposal A", slot: "A",
+        { key: "A", label: "A案", en: "Proposal A", slot: "A", slots: ["A", "A2"],
           concept: "以Ｋ和Ｈ向天空與海張開，站穩這片土地，留下的空間，是一起成就的大事。" },
         { key: "B", label: "B案", en: "Proposal B", slot: "B",
           concept: "一個不起眼的點，連成線、拼成面，就是高雄的大事。" },
@@ -837,7 +837,7 @@
       head.append(h2, el("span", "sec-tag", it.en));
       card.appendChild(head);
 
-      if (it.slots) {
+      if (it.slots && it.slots.length > 1) {
         const grid = el("div", "multi-grid");
         it.slots.forEach((k, n) => {
           const tile = el("div", "multi-tile");
@@ -847,7 +847,7 @@
           tile.append(slot, slotTools(k, `${it.label} 第 ${n + 1} 張`, true));
           grid.appendChild(tile);
         });
-        card.append(grid, el("p", "multi-note", "前台會依第 1 → 4 張的順序顯示，空的位置會自動略過。"));
+        card.append(grid, el("p", "multi-note", "前台會依照順序顯示，空的位置會自動略過。"));
       } else {
         const slot = el("div", "img-slot");
         fillSlot(slot, it.label, state.images[it.slot] ? [state.images[it.slot]] : [], "admin-" + it.slot);
