@@ -363,6 +363,19 @@
   .multi-tile .btn.sm{padding:6px 10px;font-size:12px}
   .multi-tile .slot-msg{font-size:12px}
   .multi-note{font-size:13px;color:var(--mute);margin:12px 0 0}
+  .fav{margin-top:clamp(16px,2.5vw,40px);display:flex;justify-content:space-between;align-items:center;gap:16px 32px;flex-wrap:wrap}
+  .fav h2{margin:0;font-weight:900;font-size:clamp(26px,2.8vw,38px);letter-spacing:.04em;display:flex;align-items:baseline;gap:16px}
+  .fav h2 .mono{font-weight:400;font-size:13px;color:var(--mute);letter-spacing:.14em}
+  .fav-sub{margin:8px 0 0;font-size:14px;color:var(--mute);letter-spacing:.04em}
+  .fav .pick.light{min-width:220px;font-size:17px;padding:14px 46px 14px 16px}
+  .fav.missing{box-shadow:inset 6px 0 0 var(--orange)}
+  .fav.missing .fav-sub{color:var(--orange-ink);font-weight:700}
+  .fav-tally{margin-top:clamp(24px,3vw,40px);padding-top:clamp(18px,2.4vw,28px);border-top:1px solid var(--panel-line)}
+  .fav-tally h4{margin:0 0 4px;font-size:20px;font-weight:900;letter-spacing:.06em}
+  .fav-tally .fav-sub{margin:0 0 18px}
+  .fav-tally .res-crit{gap:14px}
+  .rc-row.win .rc-name{color:var(--orange-ink)}
+  td.fav-cell{font-weight:700}
   th.grp{border-bottom:3px solid var(--ink)}
   th.grp.o{border-bottom-color:var(--orange)}
   th.grp.g{border-bottom-color:#8A8A86}
@@ -606,6 +619,29 @@
         grid.appendChild(card);
       });
       section.appendChild(grid);
+
+      // 主觀性：不依標準，選最喜歡的一案
+      const fav = el("section", "card fav");
+      fav.id = "fav-" + sec.key;
+      const favText = el("div");
+      const fh = el("h2");
+      const favId = "favsel-" + sec.key;
+      const fl = el("label", null, "主觀性"); fl.htmlFor = favId;
+      fh.append(fl, el("span", "mono", "Preference"));
+      favText.append(fh, el("p", "fav-sub", "不依據原有的標準，選擇最喜歡的提案"));
+      const fbox = el("div", "pick-box");
+      const fsel = document.createElement("select");
+      fsel.className = "pick light"; fsel.id = favId;
+      const o0 = document.createElement("option"); o0.value = ""; o0.textContent = "請選擇"; fsel.appendChild(o0);
+      for (const it of sec.items) { const o = document.createElement("option"); o.value = it.key; o.textContent = it.label; fsel.appendChild(o); }
+      fsel.addEventListener("change", () => {
+        fav.classList.remove("missing");
+        if (fsel.dataset.last !== fsel.value) { fsel.dataset.last = fsel.value; markDirty(sec.key); }
+        updateProgress();
+      });
+      fbox.appendChild(fsel);
+      fav.append(favText, fbox);
+      section.appendChild(fav);
       host.appendChild(section);
     }
     renderSlots();
@@ -629,8 +665,9 @@
   function updateProgress() {
     const key = state.view === "layout" ? "layout" : "cover";
     const mine = rows().filter(r => r.dataset.s === key);
-    const done = mine.filter(r => r.dataset.touched === "1").length;
-    $("#counter").textContent = `${done} / ${mine.length}`;
+    const fsel = document.getElementById("favsel-" + key);
+    const done = mine.filter(r => r.dataset.touched === "1").length + (fsel && fsel.value ? 1 : 0);
+    $("#counter").textContent = `${done} / ${mine.length + (fsel ? 1 : 0)}`;
   }
 
   // ---------- images ----------
@@ -945,12 +982,22 @@
       missing[0].scrollIntoView({ behavior: "smooth", block: "center" });
       return;
     }
+    const favSel = document.getElementById("favsel-" + key);
+    if (!favSel.value) {
+      const box = document.getElementById("fav-" + key);
+      box.classList.add("missing");
+      setNote(key, "請在「主觀性」選擇最喜歡的提案。", "err");
+      box.scrollIntoView({ behavior: "smooth", block: "center" });
+      setTimeout(() => favSel.focus({ preventScroll: true }), 300);
+      return;
+    }
 
     const part = {};
     for (const it of sec.items) {
       part[it.key] = {};
       for (const c of sec.criteria) part[it.key][c.key] = Number($("input", rowOf(key, it.key, c.key)).value);
     }
+    part.favorite = favSel.value;
     const mine = loadMine() || { id: uuid(), token: token(), values: { scores: {} } };
     const payload = { id: mine.id, token: mine.token, title, scores: { [key]: part } };
 
@@ -994,7 +1041,10 @@
           any = true;
         }
       }
-      if (any) setSent(sec.key, true);
+      const favV = v.scores && v.scores[sec.key] && v.scores[sec.key].favorite;
+      const fsel = document.getElementById("favsel-" + sec.key);
+      if (fsel && favV && sec.items.some(i => i.key === favV)) { fsel.value = favV; fsel.dataset.last = favV; }
+      if (any) setSent(sec.key, !!(fsel && fsel.value));
     }
     updateProgress();
   }
@@ -1275,6 +1325,25 @@
 
       grid.append(left, right);
       panel.appendChild(grid);
+
+      // 主觀性統計：每一案被選為最喜歡的票數
+      const favVotes = list.map(r => r.scores && r.scores[sec.key] && r.scores[sec.key].favorite).filter(v => sec.items.some(i => i.key === v));
+      const tally = el("div", "fav-tally");
+      tally.append(el("h4", null, "主觀性・最喜歡的提案"), el("p", "fav-sub", `不依據原有的標準，共 ${favVotes.length} 票`));
+      const tRows = el("div", "res-crit");
+      const maxVotes = Math.max(0, ...sec.items.map(i => favVotes.filter(v => v === i.key).length));
+      for (const opt of sec.items) {
+        const n = favVotes.filter(v => v === opt.key).length;
+        const row = el("div", "rc-row" + (n > 0 && n === maxVotes ? " win" : ""));
+        const track = el("div", "rc-track");
+        const fill = el("div", "rc-fill");
+        fill.style.width = favVotes.length ? (n / favVotes.length * 100) + "%" : "0%";
+        track.appendChild(fill);
+        row.append(el("div", "rc-name", opt.label), track, el("div", "rc-val", `${n} 票`));
+        tRows.appendChild(row);
+      }
+      tally.appendChild(tRows);
+      panel.appendChild(tally);
       wrap.appendChild(panel);
     }
 
@@ -1317,14 +1386,15 @@
       const thT = el("th", "name", "職稱"); thT.rowSpan = 2; r1.appendChild(thT);
       const thG = el("th", "grp" + (idx === 0 ? " o" : idx === 2 ? " g" : "")); thG.colSpan = sec.criteria.length; thG.appendChild(pbox); r1.appendChild(thG);
       for (const c of sec.criteria) r2.appendChild(el("th", null, c.label));
+      const thFav = el("th", null, "最喜歡"); thFav.rowSpan = 2;
       const thTime = el("th", null, "送出時間"); thTime.rowSpan = 2;
       const thDel = el("th", null, "管理"); thDel.rowSpan = 2;
-      r1.append(thTime, thDel);
+      r1.append(thFav, thTime, thDel);
       thead.append(r1, r2);
 
       if (!rowsFor.length) {
         const tr = el("tr"); const td = el("td", null, `目前還沒有人送出${sec.label}評分。`);
-        td.colSpan = 3 + sec.criteria.length; td.style.color = "var(--mute)"; tr.appendChild(td); tbody.appendChild(tr);
+        td.colSpan = 4 + sec.criteria.length; td.style.color = "var(--mute)"; tr.appendChild(td); tbody.appendChild(tr);
       }
       for (const r of rowsFor) {
         const tr = el("tr");
@@ -1333,6 +1403,9 @@
           const v = score(r, sec.key, it.key, c.key);
           tr.appendChild(el("td", null, v ? `${v} ${LEVELS[v]}` : "–"));
         }
+        const favK = r.scores[sec.key].favorite;
+        const favIt = sec.items.find(i => i.key === favK);
+        tr.appendChild(el("td", "fav-cell", favIt ? favIt.label : "–"));
         tr.appendChild(el("td", "time", timeStr(r.updatedAt)));
         const tdDel = el("td");
         const b = el("button", "del", "刪除");
@@ -1361,11 +1434,16 @@
   function buildCSV() {
     const esc = (v) => { const s = v == null ? "" : String(v); return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
     const head = ["職稱", "送出時間"];
-    for (const sec of SECTIONS) for (const it of sec.items) for (const c of sec.criteria) head.push(`${it.label}-${c.label}`);
+    for (const sec of SECTIONS) { for (const it of sec.items) for (const c of sec.criteria) head.push(`${it.label}-${c.label}`); head.push(`${sec.label}-最喜歡`); }
     const lines = [head.map(esc).join(",")];
     for (const r of state.responses) {
       const row = [r.title, r.updatedAt ? new Date(r.updatedAt).toLocaleString("zh-TW") : ""];
-      for (const sec of SECTIONS) for (const it of sec.items) for (const c of sec.criteria) row.push(score(r, sec.key, it.key, c.key));
+      for (const sec of SECTIONS) {
+        for (const it of sec.items) for (const c of sec.criteria) row.push(score(r, sec.key, it.key, c.key));
+        const fk = r.scores && r.scores[sec.key] && r.scores[sec.key].favorite;
+        const fi = sec.items.find(i => i.key === fk);
+        row.push(fi ? fi.label : "");
+      }
       lines.push(row.map(esc).join(","));
     }
     return lines.join("\r\n");
