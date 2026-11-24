@@ -376,6 +376,8 @@
   .fav-tally .res-crit{gap:14px}
   .rc-row.win .rc-name{color:var(--orange-ink)}
   td.fav-cell{font-weight:700}
+  .concept{margin:14px 0 0;font-size:14px;line-height:1.85;color:#555552;letter-spacing:.06em}
+  @media (min-width:860px){.concept{min-height:calc(1.85em * 2)}}
   th.grp{border-bottom:3px solid var(--ink)}
   th.grp.o{border-bottom-color:var(--orange)}
   th.grp.g{border-bottom-color:#8A8A86}
@@ -480,9 +482,12 @@
     {
       key: "cover", num: "01", label: "封面提案", en: "Cover Proposal",
       items: [
-        { key: "A", label: "A案", en: "Proposal A", slot: "A" },
-        { key: "B", label: "B案", en: "Proposal B", slot: "B" },
-        { key: "C", label: "C案", en: "Proposal C", slot: "C" },
+        { key: "A", label: "A案", en: "Proposal A", slot: "A",
+          concept: "以Ｋ和Ｈ向天空與海張開，站穩這片土地，留下的空間，是一起成就的大事。" },
+        { key: "B", label: "B案", en: "Proposal B", slot: "B",
+          concept: "一個不起眼的點，連成線、拼成面，就是高雄的大事。" },
+        { key: "C", label: "C案", en: "Proposal C", slot: "C",
+          concept: "一條曲線，串起整座城市，也牽起每個高雄人的心，一起流向未來。" },
       ],
       criteria: [
         { key: "identity",       label: "識別度", en: "Identity" },
@@ -589,6 +594,7 @@
         const slot = el("div", "img-slot");
         slot.id = "slot-" + it.slot;
         card.appendChild(slot);
+        if (it.concept) card.appendChild(el("p", "concept", it.concept));
 
         const crits = el("div", "criteria");
         for (const c of sec.criteria) {
